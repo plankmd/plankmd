@@ -1,0 +1,15 @@
+# PlankMD
+
+> PlankMD is an open, Markdown-based format for constructions made of identical wooden building planks (15 × 3 × 1 in plank thicknesses) and the order in which to build them. One plank per line, one fenced block per building step.
+
+- [Specification](https://plankmd.org/SPEC.md): coordinate system, orientations, syntax levels, placement order, validation codes
+- [LLM instructions](https://plankmd.org/docs/llm-instructions.md): a ready-to-use system prompt for writing valid, buildable models
+- [Reference implementation](https://plankmd.org/src/plankmd.js): parse, expand and validate, with no dependencies
+- [Validator on npm](https://www.npmjs.com/package/plankmd): `npx plankmd validate model.plank.md --physics`
+
+## Examples
+
+- [Small square tower](https://plankmd.org/samples/square-tower.plank.md)
+- [Corbel bridge](https://plankmd.org/samples/corbel-bridge.plank.md)
+- [Twisted tower](https://plankmd.org/samples/twisted-tower.plank.md): free angles with `rot`
+- [Castle](https://plankmd.org/gallery/castle.plank.md): a larger model in many steps

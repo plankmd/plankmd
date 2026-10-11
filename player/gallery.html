@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlankMD Gallery</title>
+<style>
+:root { --bg: #f6f3ee; --fg: #2a2620; --muted: #776f63; --panel: #fffdf9; --line: #e2dcd2; --accent: #8a5a1f; --scene: #f3efe8; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #1d1b18; --fg: #eee8de; --muted: #a59c8f; --panel: #262420; --line: #3a3630; --accent: #e0a75e; --scene: #262420; }
+}
+:root[data-theme="dark"] { --bg: #1d1b18; --fg: #eee8de; --muted: #a59c8f; --panel: #262420; --line: #3a3630; --accent: #e0a75e; --scene: #262420; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, sans-serif; }
+header { padding: 20px 16px 4px; max-width: 1200px; margin: 0 auto; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lang { display: inline-flex; }
+.lang button { font: inherit; font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 4px 6px; cursor: pointer; }
+.lang button:hover { border-color: var(--accent); }
+.lang button:first-child { border-radius: 6px 0 0 6px; }
+.lang button:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+.lang button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); font-weight: 600; position: relative; }
+h1 { margin: 0; font-size: 20px; }
+header p { margin: 4px 0 0; color: var(--muted); }
+main { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 16px; max-width: 1200px; margin: 0 auto; }
+a.card { display: block; color: inherit; text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+a.card:hover { border-color: var(--accent); }
+header a { color: var(--accent); }
+a.card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--scene); }
+a.card div { padding: 8px 10px; }
+a.card b { display: block; }
+a.card span { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1 data-i18n="galleryHeading">PlankMD gallery</h1>
+    <span class="lang" role="group" aria-label="Language" data-i18n-aria="language" data-lang-switch><button data-lang="en" lang="en" aria-pressed="true">EN</button><button data-lang="fr" lang="fr" aria-pressed="false">FR</button></span>
+  </div>
+  <p data-i18n="galleryIntro">Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. Click one to open it in the player.</p>
+  <p><a href="index.html" data-sibling="index.html" data-i18n="playerLink">Player</a> · <a href="../SPEC.md" data-i18n="spec">Spec</a> · <a href="https://plankmd.org" data-i18n-href="site">plankmd.org</a></p>
+</header>
+<main id="grid"></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="i18n.js"></script>
+<script src="../src/plankmd.js"></script>
+<script src="samples.js"></script>
+<script>
+'use strict';
+const I18N = window.PlankMDI18n;
+let lang = I18N.detect();
+let T = I18N.strings(lang);
+I18N.translatePage(lang);
+document.title = T.galleryTitle;
+const cards = []; // [card, facts element, result, name]: their texts change with the language
+function label(a, facts, result, name) {
+  a.href = I18N.sibling(`index.html#${name}`, lang);
+  facts.textContent = [T.planks(result.planks.length), T.steps(result.steps.length)]
+    .concat(result.meta.difficulty ? [T.difficulty(result.meta.difficulty)] : []).join(' · ');
+}
+I18N.onSwitch((next) => {
+  lang = next;
+  T = I18N.strings(lang);
+  I18N.translatePage(lang);
+  document.title = T.galleryTitle;
+  for (const c of cards) label(...c);
+});
+
+// Renders each bundled model once, off screen, into a still image.
+const W = 480, H = 360;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+const sceneColor = getComputedStyle(document.documentElement).getPropertyValue('--scene').trim();
+
+function thumbnail(result) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(sceneColor);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+  sun.position.set(40, 80, 50);
+  scene.add(sun);
+  const group = new THREE.Group();
+  for (const p of result.planks) {
+    const [sx, sy, sz] = p.size;
+    const g = new THREE.BoxGeometry(sx, sz, sy);
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: p.color }));
+    // PlankMD (x, y, z) is (x, z, -y) in the scene.
+    m.position.set(p.center[0], p.center[2], -p.center[1]);
+    m.rotation.y = (p.rotation * Math.PI) / 180;
+    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: 0x5a4630 })));
+    group.add(m);
+  }
+  scene.add(group);
+  const box = new THREE.Box3().setFromObject(group);
+  const c = box.getCenter(new THREE.Vector3());
+  const r = box.getSize(new THREE.Vector3()).length() * 0.85;
+  const camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 5000);
+  camera.position.set(c.x + r * 0.85, c.y + r * 0.75, c.z + r * 1.05);
+  camera.lookAt(c);
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+}
+
+const grid = document.getElementById('grid');
+const all = window.PLANKMD_SAMPLES || {};
+const names = Object.keys(all).filter((n) => n.startsWith('gallery/')).concat(Object.keys(all).filter((n) => !n.startsWith('gallery/')));
+for (const name of names) {
+  const result = PlankMD.validate(all[name]);
+  if (!result.planks.length) continue;
+  const a = document.createElement('a');
+  a.className = 'card';
+  const img = document.createElement('img');
+  img.alt = result.meta.title || name;
+  img.src = thumbnail(result);
+  const info = document.createElement('div');
+  const title = document.createElement('b');
+  title.textContent = result.meta.title || name;
+  const facts = document.createElement('span');
+  cards.push([a, facts, result, name]);
+  label(a, facts, result, name);
+  info.append(title, facts);
+  a.append(img, info);
+  grid.appendChild(a);
+}
+document.body.dataset.ready = 'true';
+</script>
+</body>
+</html>

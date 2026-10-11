@@ -1,0 +1,49 @@
+/* Wood tones, shared with the player. */
+:root {
+  --vp-c-brand-1: #8a5a1f;
+  --vp-c-brand-2: #a06b28;
+  --vp-c-brand-3: #b57a30;
+  --vp-c-brand-soft: rgba(138, 90, 31, 0.14);
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #8a5a1f 30%, #c99a5b);
+}
+.dark {
+  --vp-c-brand-1: #e0a75e;
+  --vp-c-brand-2: #d39649;
+  --vp-c-brand-3: #b57a30;
+  --vp-c-brand-soft: rgba(224, 167, 94, 0.16);
+}
+.gallery-shot { border: 1px solid var(--vp-c-divider); border-radius: 8px; }
+.notice { color: var(--vp-c-text-2); font-size: 0.9em; }
+/* The hero uses a version of the logo cropped to its drawing (logo-wide.svg). */
+.VPHero .image-container { width: 280px; height: 200px; }
+@media (min-width: 960px) { .VPHero .image-container { width: 360px; height: 320px; } }
+.VPHero .image-src { max-width: 100%; max-height: 100%; }
+
+/* Examples with a 3D preview (PlankPreview.vue): side by side when there is
+   room, stacked otherwise. */
+.plank-example { container-type: inline-size; margin: 16px 0; }
+.plank-example-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 620px) {
+  .plank-example:not(.plank-example-wide) .plank-example-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: stretch; }
+  .plank-example:not(.plank-example-wide) .plank-example-code > div[class*='language-'] { height: 100%; }
+}
+.plank-example-code > div[class*='language-'] { margin: 0 !important; }
+.plank-example-split { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 12px; }
+.plank-preview { margin: 0; display: flex; flex-direction: column; border: 1px solid var(--vp-c-divider); border-radius: 8px; overflow: hidden; background: var(--vp-c-bg-soft); }
+.plank-preview-scene { position: relative; flex: 1; min-height: 220px; cursor: grab; touch-action: none; }
+.plank-preview-scene canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; }
+.plank-preview-status { position: absolute; left: 10px; top: 8px; font-size: 12px; color: var(--vp-c-text-2); z-index: 1; pointer-events: none; }
+.plank-preview figcaption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 6px 10px; border-top: 1px solid var(--vp-c-divider); font-size: 12px; color: var(--vp-c-text-2); }
+.plank-preview-actions { display: flex; gap: 10px; align-items: center; }
+.plank-preview-actions button { color: var(--vp-c-brand-1); font-weight: 500; }
+.plank-preview-actions a { color: var(--vp-c-brand-1); text-decoration: none; font-weight: 500; }
+.plank-preview-actions a:hover, .plank-preview-actions button:hover { text-decoration: underline; }
+.plank-example-wide .plank-preview-scene { min-height: 260px; }
+
+/* Buttons in Markdown pages. */
+.vp-doc a.pm-button { display: inline-block; margin: 0 8px 8px 0; padding: 0 20px; line-height: 38px; border-radius: 20px; font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid transparent; transition: background-color 0.25s; }
+.vp-doc a.pm-button.brand { background: var(--vp-c-brand-3); color: var(--vp-c-white); }
+.vp-doc a.pm-button.brand:hover { background: var(--vp-c-brand-2); }
+.vp-doc a.pm-button.alt { background: var(--vp-c-default-soft); color: var(--vp-c-text-1); }
+.vp-doc a.pm-button.alt:hover { background: var(--vp-c-default-2); }

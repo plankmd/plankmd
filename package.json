@@ -1,0 +1,59 @@
+{
+  "name": "plankmd",
+  "version": "0.1.0",
+  "description": "An open, Markdown-based format for wooden plank constructions and their building steps, with a reference validator and a 3D player.",
+  "keywords": [
+    "plankmd",
+    "plank",
+    "wooden-planks",
+    "construction",
+    "building-instructions",
+    "markdown",
+    "file-format",
+    "3d",
+    "validator",
+    "physics",
+    "llm"
+  ],
+  "homepage": "https://plankmd.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/plankmd/plankmd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/plankmd/plankmd/issues"
+  },
+  "license": "MIT",
+  "author": "PlankMD contributors",
+  "main": "src/plankmd.js",
+  "bin": {
+    "plankmd": "bin/plankmd.js"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "player/",
+    "samples/",
+    "gallery/",
+    "SPEC.md",
+    "CHANGELOG.md",
+    "llms.txt",
+    "docs/llm-instructions.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "validate": "node bin/plankmd.js validate samples/*.plank.md --strict",
+    "build:samples": "node scripts/build-samples.js",
+    "check:gallery": "node bin/plankmd.js validate gallery/*.plank.md --strict --physics && node bin/plankmd.js drop gallery/*.plank.md",
+    "prepublishOnly": "npm test && npm run validate"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "highs": "1.15.3"
+  },
+  "devDependencies": {
+    "@dimforge/rapier3d-compat": "0.20.0"
+  }
+}

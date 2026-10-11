@@ -1,0 +1,20 @@
+{
+  "name": "plankmd-org",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Source of the plankmd.org website.",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "dev": "npm run sync && vitepress dev",
+    "build": "npm run sync && vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "1.6.4",
+    "vue": "3.5.13"
+  },
+  "dependencies": {
+    "three": "0.169.0"
+  }
+}

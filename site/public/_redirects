@@ -1,0 +1,3 @@
+# Cloudflare Pages redirects.
+/github https://github.com/plankmd/plankmd 302
+/npm https://www.npmjs.com/package/plankmd 302

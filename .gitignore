@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+*.log
+*.tgz
+.env
+.env.*
+
+# Python cross-check (see python/.gitignore)
+python/.venv/
+__pycache__/
+
+# Local tool settings
+.claude/

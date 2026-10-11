@@ -1,0 +1,13 @@
+node_modules/
+.vitepress/cache/
+.vitepress/dist/
+# Copied from the repository by scripts/sync.mjs
+public/player/
+public/src/
+public/samples/
+public/gallery/
+public/docs/
+public/SPEC.md
+public/CHANGELOG.md
+public/LICENSE.txt
+public/llms.txt
