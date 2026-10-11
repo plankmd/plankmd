@@ -75,7 +75,7 @@ test (`npm run check:gallery`). Open `player/gallery.html` to browse them.
 | [`src/drop.js`](./src/drop.js) | Drop test: a physics engine ([Rapier](https://rapier.rs)) lets gravity act on the model |
 | [`gallery/`](./gallery/) | Eleven larger models, checked for balance |
 | [`site/`](./site/) | Source of [plankmd.org](https://plankmd.org) (VitePress) |
-| [`player/`](./player/) | A 3D player: steps, plank-by-plank replay, live editing, diagnostics, balance check and drop test |
+| [`player/`](./player/) | A 3D player: steps, plank-by-plank replay, live editing, diagnostics, balance check and drop test; a printable booklet (`booklet.html`) and a building video (`video.html`) of any model |
 | [`samples/`](./samples/) | Example models (CC0): square tower, twisted tower, corbel bridge, and two models that fall on purpose: a diving board (at step 3) and a leaning tower (when its flag goes on top) |
 | [`test/cases/`](./test/cases/) | Small models with a known verdict (stands or falls), shared by every balance checker |
 
@@ -142,6 +142,15 @@ validated against each other on [`test/cases/`](./test/cases/).
 ```js
 const PlankMD = require('./src/plankmd.js'); // or window.PlankMD in a browser
 const { valid, planks, steps, diagnostics } = PlankMD.validate(text);
+```
+
+**Print a booklet, make a video.** The player links to an A4 building
+booklet and to a building video of the model shown. From the command line,
+with Chrome and ffmpeg installed:
+
+```bash
+npm run booklet -- gallery/castle.plank.md   # castle.pdf
+npm run video -- gallery/castle.plank.md     # castle.mp4, ready for YouTube
 ```
 
 **Generate models with an LLM.** Give the model
