@@ -45,7 +45,8 @@
     "validate": "node bin/plankmd.js validate samples/*.plank.md --strict",
     "build:samples": "node scripts/build-samples.js",
     "check:gallery": "node bin/plankmd.js validate gallery/*.plank.md --strict --physics && node bin/plankmd.js drop gallery/*.plank.md && node bin/plankmd.js drop gallery/*.plank.md --replay",
-    "prepublishOnly": "npm test && npm run validate"
+    "prepublishOnly": "npm test && npm run validate",
+    "video": "node scripts/video.js"
   },
   "engines": {
     "node": ">=18"
@@ -54,6 +55,7 @@
     "highs": "1.15.3"
   },
   "devDependencies": {
-    "@dimforge/rapier3d-compat": "0.20.0"
+    "@dimforge/rapier3d-compat": "0.20.0",
+    "puppeteer-core": "23.11.1"
   }
 }

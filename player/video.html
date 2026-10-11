@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlankMD Video</title>
+<style>
+:root { --bg: #1d1b18; --fg: #eee8de; --muted: #a59c8f; --line: #3a3630; --accent: #e0a75e; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, sans-serif; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
+canvas { width: 100%; height: auto; border-radius: 8px; background: #000; display: block; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+button, select { font: inherit; color: var(--fg); background: #262420; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+input[type=range] { flex: 1; min-width: 200px; accent-color: var(--accent); }
+#status, #time { color: var(--muted); font-variant-numeric: tabular-nums; }
+a { color: var(--accent); }
+body.render main > :not(#stage) { display: none; }
+body.render main { padding: 0; max-width: none; }
+body.render canvas { border-radius: 0; width: auto; }
+</style>
+</head>
+<body>
+<main>
+  <div id="stage"></div>
+  <div class="row">
+    <button id="play">Play</button>
+    <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Time">
+    <span id="time"></span>
+  </div>
+  <div class="row">
+    <select id="format" aria-label="Format"><option value="landscape">1920 × 1080</option><option value="vertical">1080 × 1920 (Shorts)</option></select>
+    <button id="record">Record a video</button>
+    <span id="status"></span>
+  </div>
+  <p id="about">A building video of a PlankMD model. Open it with the same addresses as the player: <code>video.html#corbel-bridge</code>, <code>video.html?src=&lt;url&gt;</code>. Record it here in real time, or render an MP4 frame by frame with <code>node scripts/video.js model.plank.md</code>. <a href="index.html">Player</a></p>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../src/plankmd.js"></script>
+<script src="samples.js"></script>
+<script src="render.js"></script>
+<script>
+'use strict';
+// The video is a pure function of time: frame(t) draws the picture at t
+// seconds. In the page it plays in real time and can be recorded with
+// MediaRecorder; scripts/video.js calls frame() for every frame instead and
+// pipes the pictures to ffmpeg, so the result does not depend on the speed of
+// the machine.
+
+const params = new URLSearchParams(location.search);
+const LANG = params.get('lang') === 'fr' ? 'fr' : 'en';
+const TEXT = {
+  en: { planks: (n) => `${n} plank${n === 1 ? '' : 's'}`, steps: (n) => `${n} step${n === 1 ? '' : 's'}`, difficulty: (d) => `difficulty ${d}/5`,
+    step: (k, n) => `Step ${k} of ${n}`, plank: (k, n) => `Plank ${k} / ${n}`, buildIt: 'Build it yourself', guide: 'Blue planks are guides: lay them to measure the gap, then take them away.' },
+  fr: { planks: (n) => `${n} planchette${n > 1 ? 's' : ''}`, steps: (n) => `${n} étape${n > 1 ? 's' : ''}`, difficulty: (d) => `difficulté ${d}/5`,
+    step: (k, n) => `Étape ${k} sur ${n}`, plank: (k, n) => `Planchette ${k} / ${n}`, buildIt: 'À vous de le construire', guide: "Les planchettes bleues sont des gabarits : posez-les pour mesurer l'écart, puis retirez-les." },
+}[LANG];
+
+const FORMATS = { landscape: [1920, 1080], vertical: [1080, 1920] };
+const FPS = 30;
+let W, H, out, ctx, render, model, timeline;
+
+function setFormat(name) {
+  [W, H] = FORMATS[name] || FORMATS.landscape;
+  out = document.createElement('canvas');
+  out.width = W; out.height = H;
+  ctx = out.getContext('2d');
+  render = PlankMDRender.create({ width: W, height: H, background: '#f3efe8', ground: '#e3dccf' });
+  const stage = document.getElementById('stage');
+  stage.replaceChildren(out);
+  if (model) { render.setModel(model); timeline = plan(model); }
+}
+
+// --------------------------------------------------------------- timeline
+// intro (title over the turning model), then for each step a title card and
+// its planks one by one, then an outro. Long models go faster per plank.
+function plan(result) {
+  const n = result.planks.length;
+  const build = Math.min(80, Math.max(20, n * 0.3));
+  const per = build / Math.max(1, n);
+  const segments = [];
+  let t = 0;
+  const push = (kind, duration, extra) => { segments.push({ kind, start: t, end: t + duration, ...extra }); t += duration; };
+  push('intro', 4);
+  for (const step of result.steps) {
+    const own = result.planks.filter((p) => p.step === step.number);
+    const guides = result.guides.some((g) => g.step === step.number);
+    push('card', guides ? 3 : 2, { step });
+    if (own.length) push('build', own.length * per, { step, first: own[0].n, last: own[own.length - 1].n });
+  }
+  push('outro', 5);
+  return { segments, duration: t, per };
+}
+
+// ------------------------------------------------------------------ frame
+const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+
+function frame(t) {
+  const { segments, duration } = timeline;
+  const seg = segments.find((s) => t < s.end) || segments[segments.length - 1];
+  const azimuth = 30 + (t / duration) * 300;
+  // Closer than a plain fit, and a little higher: the captions are at the bottom.
+  const view = { azimuth, elevation: 26, zoom: 1.3, shift: W > H ? 0.08 : 0.12 };
+  const total = model.planks.length;
+  if (seg.kind === 'intro' || seg.kind === 'outro') {
+    view.upTo = total;
+  } else if (seg.kind === 'card') {
+    view.upTo = seg.step.number === 1 ? 0 : lastOf(seg.step.number - 1);
+    view.step = seg.step.number;
+  } else {
+    const count = seg.last - seg.first + 1;
+    const x = ((t - seg.start) / (seg.end - seg.start)) * count; // planks placed so far, with the fraction of the next one
+    const k = Math.min(count, Math.floor(x) + 1);
+    view.upTo = seg.first + k - 1;
+    view.step = seg.step.number;
+    view.lit = view.upTo;
+    view.drop = { n: view.upTo, t: ease((x - (k - 1)) / 0.7) };
+  }
+  ctx.drawImage(render.draw(view), 0, 0);
+  overlay(seg, t, view);
+  return out;
+}
+
+function lastOf(stepNumber) {
+  let n = 0;
+  for (const p of model.planks) if (p.step <= stepNumber) n = p.n;
+  return n;
+}
+
+// --------------------------------------------------------------- overlays
+const pad = () => Math.round(Math.min(W, H) * 0.045);
+function font(size, weight = 600) { ctx.font = `${weight} ${Math.round(size)}px system-ui, -apple-system, "Segoe UI", sans-serif`; }
+
+function wrap(text, maxWidth, maxLines) {
+  const words = text.replace(/\s+/g, ' ').trim().split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const next = line ? `${line} ${w}` : w;
+    if (ctx.measureText(next).width > maxWidth && line) { lines.push(line); line = w; } else line = next;
+  }
+  if (line) lines.push(line);
+  if (lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] = lines[maxLines - 1].replace(/\s*\S*$/, '') + '…'; }
+  return lines;
+}
+
+function panel(x, y, w, h, alpha) {
+  ctx.fillStyle = `rgba(29, 27, 24, ${0.78 * alpha})`;
+  const r = Math.round(pad() * 0.4);
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  ctx.fill();
+}
+
+function overlay(seg, t, view) {
+  const p = pad();
+  const meta = model.meta;
+  const fade = (a, b) => Math.min(1, Math.max(0, (t - a) / 0.5), Math.max(0, (b - t) / 0.5));
+  // Watermark.
+  font(Math.min(W, H) * 0.024, 600);
+  ctx.fillStyle = 'rgba(42, 38, 32, 0.55)';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('plankmd.org', W - p, H - p * 0.6);
+  ctx.textAlign = 'left';
+
+  if (seg.kind === 'intro' || seg.kind === 'outro') {
+    const a = fade(seg.start, seg.end);
+    const title = meta.title || 'PlankMD';
+    font(Math.min(W, H) * 0.075, 750);
+    const facts = [TEXT.planks(model.planks.length), TEXT.steps(model.steps.length)].concat(meta.difficulty ? [TEXT.difficulty(meta.difficulty)] : []).join(', ');
+    const sub = seg.kind === 'outro' ? `${TEXT.buildIt}: plankmd.org` : facts;
+    const tw = ctx.measureText(title).width;
+    font(Math.min(W, H) * 0.034, 500);
+    const sw = ctx.measureText(sub).width;
+    const w = Math.max(tw, sw) + p * 2, h = Math.min(W, H) * 0.075 + Math.min(W, H) * 0.034 + p * 2.2;
+    panel(p, p, w, h, a);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#eee8de';
+    ctx.textBaseline = 'top';
+    font(Math.min(W, H) * 0.075, 750);
+    ctx.fillText(title, p * 2, p * 1.8);
+    font(Math.min(W, H) * 0.034, 500);
+    ctx.fillStyle = '#e0a75e';
+    ctx.fillText(sub, p * 2, p * 1.8 + Math.min(W, H) * 0.075 * 1.15);
+    if (seg.kind === 'outro' && meta.license) {
+      font(Math.min(W, H) * 0.022, 500);
+      ctx.fillStyle = '#a59c8f';
+      ctx.fillText(meta.license, p * 2, p * 1.8 + Math.min(W, H) * 0.075 * 1.15 + Math.min(W, H) * 0.045);
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  const step = seg.step;
+  const S = model.steps.length;
+  // Step caption: always shown during the step; the instructions too on its card.
+  const maxW = Math.min(W - p * 2, W * (W > H ? 0.62 : 0.92));
+  font(Math.min(W, H) * 0.026, 600);
+  const label = TEXT.step(step.number, S);
+  font(Math.min(W, H) * 0.042, 700);
+  const title = step.title.replace(/^Step\s+\d+\s*:\s*/i, '');
+  const titleLines = wrap(title, maxW - p * 2, 2);
+  let bodyLines = [];
+  const card = seg.kind === 'card';
+  const guides = card && model.guides.some((g) => g.step === step.number);
+  if (card) {
+    font(Math.min(W, H) * 0.027, 450);
+    bodyLines = wrap(step.text || '', maxW - p * 2, W > H ? 4 : 7);
+    if (guides) bodyLines = bodyLines.concat(wrap(TEXT.guide, maxW - p * 2, 2).map((l) => ({ guide: l })));
+  }
+  const lh1 = Math.min(W, H) * 0.042 * 1.2, lh2 = Math.min(W, H) * 0.027 * 1.4;
+  const h = p * 1.6 + Math.min(W, H) * 0.026 * 1.5 + titleLines.length * lh1 + (bodyLines.length ? p * 0.4 + bodyLines.length * lh2 : 0);
+  const y = H - h - p * 1.6;
+  const a = card ? fade(seg.start, seg.end + 10) : 1;
+  panel(p, y, maxW, h, 1);
+  ctx.globalAlpha = 1;
+  ctx.textBaseline = 'top';
+  let yy = y + p * 0.8;
+  font(Math.min(W, H) * 0.026, 600);
+  ctx.fillStyle = '#e0a75e';
+  ctx.fillText(label, p * 2, yy);
+  yy += Math.min(W, H) * 0.026 * 1.5;
+  font(Math.min(W, H) * 0.042, 700);
+  ctx.fillStyle = '#eee8de';
+  for (const l of titleLines) { ctx.fillText(l, p * 2, yy); yy += lh1; }
+  if (bodyLines.length) {
+    yy += p * 0.4;
+    ctx.globalAlpha = a;
+    font(Math.min(W, H) * 0.027, 450);
+    for (const l of bodyLines) {
+      ctx.fillStyle = typeof l === 'string' ? '#d9d2c5' : '#8fb2e3';
+      ctx.fillText(typeof l === 'string' ? l : l.guide, p * 2, yy);
+      yy += lh2;
+    }
+    ctx.globalAlpha = 1;
+  }
+  // Plank counter.
+  if (!card) {
+    const text = TEXT.plank(view.upTo, model.planks.length);
+    font(Math.min(W, H) * 0.03, 650);
+    const tw = ctx.measureText(text).width;
+    panel(W - p - tw - p * 1.2, p, tw + p * 1.2, Math.min(W, H) * 0.03 + p * 0.9, 1);
+    ctx.fillStyle = '#eee8de';
+    ctx.fillText(text, W - p - tw - p * 0.6, p * 1.45);
+  }
+}
+
+// ------------------------------------------------------------------- api
+function load(text) {
+  model = PlankMD.validate(text);
+  render.setModel(model);
+  timeline = plan(model);
+  return { duration: timeline.duration, fps: FPS, planks: model.planks.length, steps: model.steps.length, title: model.meta.title || '' };
+}
+
+function jpeg(t, quality = 0.92) { frame(t); return out.toDataURL('image/jpeg', quality); }
+
+window.PlankMDVideo = { load, frame, jpeg, setFormat, get duration() { return timeline.duration; }, FPS };
+
+// ---------------------------------------------------------- in the page
+setFormat(params.get('format') === 'vertical' ? 'vertical' : 'landscape');
+document.getElementById('format').value = params.get('format') === 'vertical' ? 'vertical' : 'landscape';
+if (params.has('render')) document.body.classList.add('render');
+
+const samples = window.PLANKMD_SAMPLES || {};
+async function source() {
+  if (location.hash.startsWith('#code=')) {
+    const b64 = location.hash.slice(6).replace(/-/g, '+').replace(/_/g, '/');
+    return new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
+  }
+  if (params.get('src')) return (await fetch(params.get('src'))).text();
+  const name = decodeURIComponent(location.hash.slice(1));
+  return samples[name] || samples['gallery/castle'] || Object.values(samples)[0];
+}
+
+let playing = false, t0 = 0, at = 0, recorder = null;
+const seek = document.getElementById('seek');
+function show(t) {
+  at = Math.min(t, timeline.duration);
+  frame(at);
+  seek.value = Math.round((at / timeline.duration) * 1000);
+  const f = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  document.getElementById('time').textContent = `${f(at)} / ${f(timeline.duration)}`;
+}
+function tick(now) {
+  if (!playing) return;
+  show((now - t0) / 1000);
+  if (at >= timeline.duration) { playing = false; document.getElementById('play').textContent = 'Play'; if (recorder) recorder.stop(); return; }
+  requestAnimationFrame(tick);
+}
+function play(from) {
+  playing = true;
+  t0 = performance.now() - from * 1000;
+  document.getElementById('play').textContent = 'Pause';
+  requestAnimationFrame(tick);
+}
+document.getElementById('play').addEventListener('click', () => {
+  if (playing) { playing = false; document.getElementById('play').textContent = 'Play'; return; }
+  play(at >= timeline.duration ? 0 : at);
+});
+seek.addEventListener('input', () => { playing = false; document.getElementById('play').textContent = 'Play'; show((seek.value / 1000) * timeline.duration); });
+document.getElementById('format').addEventListener('change', (e) => { setFormat(e.target.value); show(at); });
+
+// Records the canvas in real time: MP4 where the browser can, WebM otherwise.
+document.getElementById('record').addEventListener('click', () => {
+  if (recorder) return;
+  const type = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+  if (!type) { document.getElementById('status').textContent = 'This browser cannot record: use scripts/video.js.'; return; }
+  const chunks = [];
+  recorder = new MediaRecorder(out.captureStream(FPS), { mimeType: type, videoBitsPerSecond: 12e6 });
+  recorder.ondataavailable = (e) => chunks.push(e.data);
+  recorder.onstop = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(chunks, { type }));
+    a.download = `${(model.meta.title || 'plankmd').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
+    a.click();
+    recorder = null;
+    document.getElementById('status').textContent = `Saved ${a.download}.`;
+  };
+  recorder.start();
+  document.getElementById('status').textContent = 'Recording…';
+  play(0);
+});
+
+if (!params.has('render')) source().then((text) => { load(text); show(0); document.body.dataset.ready = 'true'; });
+else document.body.dataset.ready = 'true';
+</script>
+</body>
+</html>
