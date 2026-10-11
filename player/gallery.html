@@ -26,6 +26,7 @@ main { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr
 a.card { display: block; color: inherit; text-decoration: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 a.card:hover { border-color: var(--accent); }
 header a { color: var(--accent); }
+.links a + a { margin-left: 0.9em; }
 a.card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--scene); }
 a.card div { padding: 8px 10px; }
 a.card b { display: block; }
@@ -39,7 +40,7 @@ a.card span { color: var(--muted); font-size: 13px; }
     <span class="lang" role="group" aria-label="Language" data-i18n-aria="language" data-lang-switch><button data-lang="en" lang="en" aria-pressed="true">EN</button><button data-lang="fr" lang="fr" aria-pressed="false">FR</button></span>
   </div>
   <p data-i18n="galleryIntro">Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. Click one to open it in the player.</p>
-  <p><a href="index.html" data-sibling="index.html" data-i18n="playerLink">Player</a> · <a href="../SPEC.md" data-i18n="spec">Spec</a> · <a href="https://plankmd.org" data-i18n-href="site">plankmd.org</a></p>
+  <p class="links"><a href="index.html" data-sibling="index.html" data-i18n="playerLink">Player</a> <a href="../SPEC.md" data-i18n="spec">Spec</a> <a href="https://plankmd.org" data-i18n-href="site">plankmd.org</a></p>
 </header>
 <main id="grid"></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -57,7 +58,7 @@ const cards = []; // [card, facts element, result, name]: their texts change wit
 function label(a, facts, result, name) {
   a.href = I18N.sibling(`index.html#${name}`, lang);
   facts.textContent = [T.planks(result.planks.length), T.steps(result.steps.length)]
-    .concat(result.meta.difficulty ? [T.difficulty(result.meta.difficulty)] : []).join(' · ');
+    .concat(result.meta.difficulty ? [T.difficulty(result.meta.difficulty)] : []).join(', ');
 }
 I18N.onSwitch((next) => {
   lang = next;

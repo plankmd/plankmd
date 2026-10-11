@@ -203,7 +203,7 @@ onBeforeUnmount(() => { io?.disconnect(); cleanup?.() })
     </div>
     <figcaption>
       <span class="plank-preview-count">
-        <template v-if="label">{{ label }} · </template>
+        <template v-if="label">{{ label }}: </template>
         {{ count.planks }} {{ count.planks === 1 ? t.plank : t.planks }}<template v-if="count.guides"> + {{ count.guides }} {{ t.guides }}{{ count.guides > 1 ? 's' : '' }}</template>
       </span>
       <span class="plank-preview-actions">

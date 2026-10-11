@@ -264,7 +264,7 @@
     const prog = program(planks);
     const t = { lower: 0, upper: 10, entries: [] };
     for (let b = 0; b < planks.length; b++) {
-      // Contact forces balance the weight: Σ f + (t·w·dx, t·w·dy, -w) = 0.
+      // Contact forces balance the weight: Σ f + (t*w*dx, t*w*dy, -w) = 0.
       t.entries.push([6 * b, prog.weight[b] * dx], [6 * b + 1, prog.weight[b] * dy]);
     }
     const [rowLower, rowUpper] = equilibriumBounds(prog, (b) => [0, 0, prog.weight[b], 0, 0, 0]);
