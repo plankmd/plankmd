@@ -1,6 +1,6 @@
 ---
 plankmd: "0.1"
-title: Cathedral
+title: Notre-Dame de Paris
 lang: en
 inventory: 1400
 difficulty: 5
@@ -11,7 +11,7 @@ palette:
   portal: "#8a5a32"
 ---
 
-# Cathedral
+# Notre-Dame de Paris
 
 A large cathedral inspired by Notre-Dame de Paris: a west front with two flat-topped towers, three portals, a gallery and a rose window; a nave with lower aisles, a transept, a crossing with a slender spire, and a rounded east end. 1392 planks, 29 steps. It is a long build for a patient builder, so take your time and check each step before going on.
 
