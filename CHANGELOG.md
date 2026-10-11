@@ -5,6 +5,13 @@
 - Player and gallery: open the models of a GitHub repository, folder, file
   or gist, in the browser only (`?github=<address>`, or the short link
   `plankmd.org/p?repo=<address>`).
+- Booklets: `player/booklet.html` lays a model out as a printable A4
+  building booklet (PDF from the print dialog, or `npm run booklet`).
+- Videos: `player/video.html` plays and records a building video, and
+  `npm run video` renders it to MP4 for YouTube (landscape or vertical).
+- The player links to the booklet and the video of the model shown.
+- Drop test: `plankmd drop --replay` replays the build plank by plank, and
+  `npm run check:gallery` runs it.
 
 ## 0.1.0 (draft), 2026-10-11
 

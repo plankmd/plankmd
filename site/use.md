@@ -102,6 +102,29 @@ the optional solvers, which load from a CDN.
 
 You can also paste a model into the source panel, or drop a file on the scene.
 
+## Booklets and videos
+
+Every model can become a printable building booklet and a building video,
+in the browser, from the links at the bottom of the player:
+
+| Page | What it makes |
+|---|---|
+| `/player/booklet.html#<sample>` | An A4 booklet: a cover, then each step with its instructions, a large view and small views of the order of its planks. Print it, or save it as PDF. |
+| `/player/video.html#<sample>` | A building video: a title, each step's card, the planks dropping in one by one. Play it, or record it (MP4 or WebM, depending on the browser). |
+
+Both take the same addresses as the player (`?src=<url>`, `#code=<base64url>`)
+and `?lang=fr`. From a clone of the repository, with Chrome and ffmpeg
+installed, two scripts make the files:
+
+```bash
+npm run booklet -- gallery/castle.plank.md            # castle.pdf
+npm run video -- gallery/castle.plank.md              # castle.mp4, 1920 x 1080
+npm run video -- gallery/castle.plank.md --vertical   # 1080 x 1920, for Shorts
+```
+
+The video script renders frame by frame, so the MP4 is smooth whatever the
+speed of the machine: H.264, 30 frames a second, ready for YouTube.
+
 ## Share your models from GitHub
 
 Put your `.plank.md` files in a public GitHub repository, and share one link:

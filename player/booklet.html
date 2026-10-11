@@ -151,7 +151,7 @@ function build(text) {
       ...(guides.length ? [el('p', { class: 'guide' }, T.guide(guides.length))] : []),
       views));
   }
-  document.title = `${meta.title || 'PlankMD'} | PlankMD Booklet`;
+  document.title = `${meta.title || 'PlankMD'} | ${FR ? 'Notice PlankMD' : 'PlankMD Booklet'}`;
   document.getElementById('status').textContent = T.ready(1 + Math.ceil(model.steps.length / 2));
   document.body.dataset.ready = 'true';
   return { title: meta.title || '', planks: model.planks.length, steps: model.steps.length };

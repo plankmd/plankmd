@@ -109,6 +109,30 @@ code et les mêmes numéros de ligne et de planchette qu'en ligne de commande.
 Vous pouvez aussi coller un modèle dans le panneau de source, ou déposer un
 fichier sur la scène.
 
+## Notices et vidéos
+
+Chaque modèle peut devenir une notice de montage à imprimer et une vidéo de
+construction, dans le navigateur, depuis les liens en bas du lecteur :
+
+| Page | Ce qu'elle produit |
+|---|---|
+| `/player/booklet.html#<exemple>` | Une notice A4 : une couverture, puis chaque étape avec ses instructions, une grande vue et de petites vues de l'ordre de pose. Imprimez-la, ou enregistrez-la en PDF. |
+| `/player/video.html#<exemple>` | Une vidéo de construction : un titre, la carte de chaque étape, les planchettes qui se posent une à une. Lisez-la, ou enregistrez-la (MP4 ou WebM selon le navigateur). |
+
+Les deux pages acceptent les mêmes adresses que le lecteur (`?src=<url>`,
+`#code=<base64url>`) et `?lang=fr`. Depuis un clone du dépôt, avec Chrome et
+ffmpeg installés, deux scripts produisent les fichiers :
+
+```bash
+npm run booklet -- gallery/castle.plank.md --lang fr  # castle.pdf
+npm run video -- gallery/castle.plank.md --lang fr    # castle.mp4, 1920 x 1080
+npm run video -- gallery/castle.plank.md --vertical   # 1080 x 1920, pour les Shorts
+```
+
+Le script vidéo rend la vidéo image par image : le MP4 est fluide quelle que
+soit la vitesse de la machine. H.264, 30 images par seconde, prêt pour
+YouTube.
+
 ## Partager vos modèles depuis GitHub
 
 Mettez vos fichiers `.plank.md` dans un dépôt GitHub public, et partagez un
