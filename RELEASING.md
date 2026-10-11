@@ -11,14 +11,16 @@
 
 ## The website
 
-[plankmd.org](https://plankmd.org) is deployed to Cloudflare Pages by
-`.github/workflows/site.yml` on every push to `main`; pull requests from this
-repository get a preview URL. The workflow needs two repository secrets:
+[plankmd.org](https://plankmd.org) is a Cloudflare Worker named `plankmd`
+that serves the built site as static assets (`wrangler.jsonc`). Cloudflare
+Workers Builds is connected to this repository and deploys every push to
+`main`:
 
-| Secret | Value |
+| Setting | Value |
 |---|---|
-| `CLOUDFLARE_API_TOKEN` | An API token with the account permission *Cloudflare Pages: Edit* |
-| `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account ID |
+| Build command | `cd site && npm ci && npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | the repository root |
 
-The Pages project is named `plankmd`. See [`site/README.md`](./site/README.md)
-to build the site locally.
+`.github/workflows/site.yml` only checks that the site builds. See
+[`site/README.md`](./site/README.md) to build it locally.

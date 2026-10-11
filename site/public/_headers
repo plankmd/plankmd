@@ -1,4 +1,4 @@
-# Cloudflare Pages headers.
+# Cloudflare static asset headers.
 # Raw models and specs are plain text, and readable from other sites, so that
 # any player can load them with ?src=.
 /*.md

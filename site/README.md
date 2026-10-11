@@ -31,6 +31,7 @@ records the choice. `fr/spec.md` is a translation of `SPEC.md`, which is the
 reference: update both together. The French LLM page includes the English
 system prompt, which stays the same in every language.
 
-The site is deployed to Cloudflare Pages by
-[`.github/workflows/site.yml`](../.github/workflows/site.yml) on every push to
-`main`. `public/_headers` and `public/_redirects` are Cloudflare Pages files.
+The site is deployed by Cloudflare Workers Builds on every push to `main`:
+the Worker `plankmd` serves `site/.vitepress/dist` as static assets
+(`../wrangler.jsonc`). `public/_headers` and `public/_redirects` are applied
+by Cloudflare.
