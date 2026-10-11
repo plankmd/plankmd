@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlankMD Booklet</title>
+<style>
+:root { --fg: #2a2620; --muted: #776f63; --line: #e2dcd2; --accent: #8a5a1f; --guide: #3f6fa8; --paper: #fffdf9; }
+* { box-sizing: border-box; }
+html { background: #e9e4dc; }
+body { margin: 0; color: var(--fg); font: 11pt/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.bar { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 16px; background: #2a2620; color: #eee8de; font-size: 14px; }
+.bar button { font: inherit; padding: 5px 12px; border-radius: 6px; border: 1px solid #e0a75e; background: #e0a75e; color: #2a2620; font-weight: 600; cursor: pointer; }
+.bar a { color: #e0a75e; }
+.bar span { color: #a59c8f; }
+.page { width: 210mm; min-height: 297mm; margin: 16px auto; padding: 14mm 14mm 12mm; background: var(--paper); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15); }
+h1 { font-size: 26pt; margin: 0 0 4mm; line-height: 1.1; }
+.lead { font-size: 12pt; margin: 0 0 5mm; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm 6mm; margin: 0 0 6mm; padding: 4mm 5mm; border: 1px solid var(--line); border-radius: 3mm; }
+.facts div { font-size: 10pt; color: var(--muted); }
+.facts b { display: block; color: var(--fg); font-size: 12pt; }
+img { display: block; width: 100%; height: auto; border-radius: 2mm; }
+.hero { border: 1px solid var(--line); }
+.foot { margin-top: 5mm; font-size: 9pt; color: var(--muted); }
+.step { break-inside: avoid; page-break-inside: avoid; padding: 0 0 6mm; margin: 0 0 6mm; border-bottom: 1px solid var(--line); }
+.step:last-child { border-bottom: 0; }
+.step header { display: flex; align-items: baseline; gap: 4mm; margin-bottom: 2mm; }
+.num { flex: none; display: inline-grid; place-items: center; width: 10mm; height: 10mm; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 13pt; }
+.step h2 { font-size: 14pt; margin: 0; }
+.count { margin-left: auto; color: var(--muted); font-size: 9.5pt; white-space: nowrap; }
+.step p { margin: 0 0 3mm; }
+.guide { color: var(--guide); font-size: 10pt; }
+.views { display: grid; grid-template-columns: 2fr 1fr; gap: 3mm; align-items: start; }
+.views .main { border: 1px solid var(--line); }
+.views .order { display: grid; gap: 2mm; }
+.views .order figure { margin: 0; }
+.views .order img { border: 1px solid var(--line); }
+.views .order figcaption { font-size: 8.5pt; color: var(--muted); text-align: right; }
+.views.single { grid-template-columns: 1fr; }
+@media print {
+  html { background: none; }
+  .bar { display: none; }
+  .page { margin: 0; box-shadow: none; width: auto; min-height: 0; padding: 0; }
+  .page + .page { break-before: page; }
+}
+@page { size: A4; margin: 12mm 12mm 14mm; }
+</style>
+</head>
+<body>
+<div class="bar"><button id="print">Print or save as PDF</button><span id="status">Drawing the views…</span> <a href="index.html">Player</a></div>
+<div id="book"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../src/plankmd.js"></script>
+<script src="samples.js"></script>
+<script src="render.js"></script>
+<script>
+'use strict';
+// A printable building booklet: a cover with the finished model, then every
+// step with its instructions, a large view of the model at the end of the
+// step (the planks of earlier steps faded, the guides shown) and, for long
+// steps, small views of the order in which its planks go. Print it, or save
+// it as PDF from the print dialog; scripts/booklet.js does that in Chrome.
+// Same addresses as the player: #<sample>, ?src=<url>, #code=<base64url>.
+
+const params = new URLSearchParams(location.search);
+const FR = params.get('lang') === 'fr';
+const T = FR ? {
+  planks: 'Planchettes', steps: 'Étapes', difficulty: 'Difficulté', inventory: 'À prévoir', license: 'Licence', size: 'Dimensions',
+  stepPlanks: (n) => `${n} planchette${n > 1 ? 's' : ''}`, view: (a, b) => `planchettes ${a} à ${b}`,
+  guide: (n) => `${n} gabarit${n > 1 ? 's' : ''} (en bleu) : posez-les pour mesurer l'écart, puis retirez-les.`,
+  made: 'Notice générée par PlankMD, un format ouvert pour les constructions en planchettes : plankmd.org',
+  print: 'Imprimer ou enregistrer en PDF', drawing: 'Dessin des vues…', ready: (n) => `${n} pages environ.`,
+} : {
+  planks: 'Planks', steps: 'Steps', difficulty: 'Difficulty', inventory: 'You need', license: 'License', size: 'Size',
+  stepPlanks: (n) => `${n} plank${n === 1 ? '' : 's'}`, view: (a, b) => `planks ${a} to ${b}`,
+  guide: (n) => `${n} guide${n === 1 ? '' : 's'} (in blue): lay ${n === 1 ? 'it' : 'them'} to measure the gap, then take ${n === 1 ? 'it' : 'them'} away.`,
+  made: 'Booklet made with PlankMD, an open format for plank constructions: plankmd.org',
+  print: 'Print or save as PDF', drawing: 'Drawing the views…', ready: (n) => `About ${n} pages.`,
+};
+document.documentElement.lang = FR ? 'fr' : 'en';
+document.getElementById('print').textContent = T.print;
+document.getElementById('status').textContent = T.drawing;
+
+const el = (tag, attrs = {}, ...children) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  for (const c of children) e.append(c);
+  return e;
+};
+
+// The paragraph under the title, as plain text.
+function description(text) {
+  const body = text.replace(/^---[\s\S]*?\n---\n/, '');
+  const m = body.match(/^#\s.*\n+([\s\S]*?)(?=\n#{1,6}\s|\n```|(?![\s\S]))/m);
+  return m ? m[1].trim().replace(/\s*\n\s*/g, ' ') : '';
+}
+
+function build(text) {
+  const model = PlankMD.validate(text);
+  const meta = model.meta;
+  const render = PlankMDRender.create({ width: 1400, height: 1000, background: '#fbf8f3', ground: '#efe9df' });
+  render.setModel(model);
+  const shot = (view) => render.draw({ azimuth: 35, elevation: 30, zoom: 1.15, ...view }).toDataURL('image/jpeg', 0.9);
+  const book = document.getElementById('book');
+  book.replaceChildren();
+  const mm = meta.unit_mm || 7.8;
+  const size = render.bounds.size;
+  const cm = (u) => Math.round((u * mm) / 10);
+
+  // Cover.
+  const cover = el('section', { class: 'page' },
+    el('h1', {}, meta.title || 'PlankMD model'),
+    ...(description(text) ? [el('p', { class: 'lead' }, description(text))] : []),
+    el('div', { class: 'facts' },
+      ...[[T.planks, model.planks.length], [T.steps, model.steps.length],
+        [T.size, `${cm(size.x)} × ${cm(size.z)} × ${cm(size.y)} cm`],
+        ...(meta.inventory ? [[T.inventory, meta.inventory]] : []),
+        ...(meta.difficulty ? [[T.difficulty, `${meta.difficulty}/5`]] : []),
+        ...(meta.license ? [[T.license, meta.license]] : [])]
+        .map(([k, v]) => el('div', {}, el('b', {}, String(v)), k))),
+    el('img', { class: 'hero', alt: meta.title || '', src: shot({}) }),
+    el('p', { class: 'foot' }, T.made));
+  book.append(cover);
+
+  // Steps, as many per page as fit: the browser breaks pages between them.
+  const steps = el('section', { class: 'page' });
+  book.append(steps);
+  for (const step of model.steps) {
+    const own = model.planks.filter((p) => p.step === step.number);
+    const guides = model.guides.filter((g) => g.step === step.number);
+    const first = own.length ? own[0].n : 0;
+    const last = own.length ? own[own.length - 1].n : (first - 1);
+    const lastBefore = model.planks.filter((p) => p.step < step.number).reduce((n, p) => Math.max(n, p.n), 0);
+    const title = step.title.replace(/^Step\s+\d+\s*:\s*/i, '');
+    const views = el('div', { class: 'views' });
+    views.append(el('img', { class: 'main', alt: title, src: shot({ upTo: own.length ? last : lastBefore, fadeBelow: first || Infinity, step: step.number }) }));
+    // The order of the step: up to three views of its planks going on.
+    if (own.length >= 6) {
+      const order = el('div', { class: 'order' });
+      const marks = [1, 2, 3].map((k) => own[Math.max(0, Math.round((own.length * k) / 4) - 1)].n);
+      let from = first;
+      for (const n of marks) {
+        order.append(el('figure', {}, el('img', { alt: '', src: shot({ upTo: n, fadeBelow: first, step: step.number, lit: n }) }), el('figcaption', {}, T.view(from, n))));
+        from = n + 1;
+      }
+      views.append(order);
+    } else views.classList.add('single');
+    steps.append(el('article', { class: 'step' },
+      el('header', {}, el('span', { class: 'num' }, String(step.number)), el('h2', {}, title), el('span', { class: 'count' }, own.length ? `${T.stepPlanks(own.length)}, ${T.view(first, last)}` : '')),
+      ...(step.text ? [el('p', {}, step.text)] : []),
+      ...(guides.length ? [el('p', { class: 'guide' }, T.guide(guides.length))] : []),
+      views));
+  }
+  document.title = `${meta.title || 'PlankMD'} | PlankMD Booklet`;
+  document.getElementById('status').textContent = T.ready(1 + Math.ceil(model.steps.length / 2));
+  document.body.dataset.ready = 'true';
+  return { title: meta.title || '', planks: model.planks.length, steps: model.steps.length };
+}
+
+window.PlankMDBooklet = { build };
+
+const samples = window.PLANKMD_SAMPLES || {};
+async function source() {
+  if (location.hash.startsWith('#code=')) {
+    const b64 = location.hash.slice(6).replace(/-/g, '+').replace(/_/g, '/');
+    return new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
+  }
+  if (params.get('src')) return (await fetch(params.get('src'))).text();
+  const name = decodeURIComponent(location.hash.slice(1));
+  return samples[name] || samples['gallery/castle'] || Object.values(samples)[0];
+}
+document.getElementById('print').addEventListener('click', () => window.print());
+if (!params.has('render')) source().then(build);
+else document.body.dataset.ready = 'loading';
+</script>
+</body>
+</html>
