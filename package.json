@@ -44,7 +44,7 @@
     "test": "node --test test/*.test.js",
     "validate": "node bin/plankmd.js validate samples/*.plank.md --strict",
     "build:samples": "node scripts/build-samples.js",
-    "check:gallery": "node bin/plankmd.js validate gallery/*.plank.md --strict --physics && node bin/plankmd.js drop gallery/*.plank.md",
+    "check:gallery": "node bin/plankmd.js validate gallery/*.plank.md --strict --physics && node bin/plankmd.js drop gallery/*.plank.md && node bin/plankmd.js drop gallery/*.plank.md --replay",
     "prepublishOnly": "npm test && npm run validate"
   },
   "engines": {

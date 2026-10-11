@@ -8,13 +8,15 @@ const PlankMD = require('../src/plankmd.js');
 const USAGE = `Usage:
   plankmd validate <file.plank.md>... [--json] [--strict] [--physics]
   plankmd expand <file.plank.md> [--json]
-  plankmd drop <file.plank.md>... [--json]
+  plankmd drop <file.plank.md>... [--replay] [--json]
 
 validate  Checks each file. Exit code 1 on any error (and on any warning with --strict).
 expand    Prints every plank in placement order, with its number and geometry.
           Guides are marked "~" and listed at the start of their step.
 drop      Drops the finished model in a physics engine (Rapier) and reports
           which planks moved. Needs the "@dimforge/rapier3d-compat" package.
+          --replay places the planks one by one, in building order, and
+          reports the first placement after which something moved.
 
   --json    Machine-readable output.
   --strict  Treat warnings as errors.
@@ -68,18 +70,20 @@ async function main(argv) {
     const out = [];
     for (const r of results) {
       if (r.error || !r.valid) { failed = true; out.push({ file: r.file, error: r.error || 'invalid model' }); continue; }
-      const sim = createDrop(R, r.planks);
+      const replay = flags.has('--replay');
+      const sim = createDrop(R, r.planks, { replay });
       const res = sim.run();
       sim.free();
       failed = failed || !res.stood;
-      out.push({ file: r.file, stood: res.stood, moved: res.moved });
+      out.push({ file: r.file, replay, stood: res.stood, moved: res.moved, fellAt: res.fellAt ? res.fellAt.n : null });
     }
     if (flags.has('--json')) console.log(JSON.stringify(out, null, 2));
     else for (const o of out) {
       if (o.error) { console.log(`✗ ${o.file}: ${o.error}`); continue; }
       const worst = o.moved.slice().sort((a, b) => b.distance - a.distance)[0];
-      console.log(o.stood ? `✓ ${o.file}: stood, no plank moved`
-        : `✗ ${o.file}: ${o.moved.length} plank${o.moved.length === 1 ? '' : 's'} moved (most: plank ${worst.n}, ${worst.distance.toFixed(1)} u, ${worst.degrees.toFixed(0)}°)`);
+      const plank = o.fellAt;
+      console.log(o.stood ? `✓ ${o.file}: ${o.replay ? 'stood through the whole build' : 'stood'}, no plank moved`
+        : `✗ ${o.file}: ${o.fellAt ? `fell during the build, once plank ${plank} was placed: ` : ''}${o.moved.length} plank${o.moved.length === 1 ? '' : 's'} moved (most: plank ${worst.n}, ${worst.distance.toFixed(1)} u, ${worst.degrees.toFixed(0)}°)`);
     }
     return failed ? 1 : 0;
   }
