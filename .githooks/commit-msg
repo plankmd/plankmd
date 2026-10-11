@@ -1,0 +1,4 @@
+#!/bin/sh
+# Checks the commit message against CONTRIBUTING.md.
+# Enable with: git config core.hooksPath .githooks
+exec node "$(git rev-parse --show-toplevel)/scripts/check-commit-message.js" "$1"
