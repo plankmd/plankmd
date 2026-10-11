@@ -47,3 +47,9 @@
 .vp-doc a.pm-button.brand:hover { background: var(--vp-c-brand-2); }
 .vp-doc a.pm-button.alt { background: var(--vp-c-default-soft); color: var(--vp-c-text-1); }
 .vp-doc a.pm-button.alt:hover { background: var(--vp-c-default-2); }
+/* Small screens: the logo sits above the title. VitePress pulls the text up
+   under a square 320 px image; ours is wider than tall, so give the title
+   its room back. */
+@media (max-width: 959px) {
+  .VPHero .image { margin: -48px -24px 12px; }
+}
