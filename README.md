@@ -84,8 +84,10 @@ test (`npm run check:gallery`). Open `player/gallery.html` to browse them.
 **See a model.** Open `player/index.html` in a browser, pick a sample, or drop
 your own `.plank.md` file on the scene. Edit the source on the left, and the
 model and the diagnostics update as you type. `player/index.html?src=<url>`
-loads a model from the web. The player speaks English and French (EN/FR switch,
-or `?lang=fr`).
+loads a model from the web, and
+[`plankmd.org/p?repo=<GitHub address>`](https://plankmd.org/use#share-your-models-from-github)
+opens every model of a GitHub repository, in the browser only. The player
+speaks English and French (EN/FR switch, or `?lang=fr`).
 
 **Validate a model.** With [the npm package](https://www.npmjs.com/package/plankmd),
 `npx plankmd validate model.plank.md`; in a clone of this repository:

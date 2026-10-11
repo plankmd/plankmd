@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Player and gallery: open the models of a GitHub repository, folder, file
+  or gist, in the browser only (`?github=<address>`, or the short link
+  `plankmd.org/p?repo=<address>`).
+
 ## 0.1.0 (draft), 2026-10-11
 
 First public draft.

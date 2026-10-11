@@ -39,12 +39,13 @@ a.card span { color: var(--muted); font-size: 13px; }
     <h1 data-i18n="galleryHeading">PlankMD gallery</h1>
     <span class="lang" role="group" aria-label="Language" data-i18n-aria="language" data-lang-switch><button data-lang="en" lang="en" aria-pressed="true">EN</button><button data-lang="fr" lang="fr" aria-pressed="false">FR</button></span>
   </div>
-  <p data-i18n="galleryIntro">Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. Click one to open it in the player.</p>
+  <p id="intro" data-i18n="galleryIntro">Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. Click one to open it in the player.</p>
   <p class="links"><a href="index.html" data-sibling="index.html" data-i18n="playerLink">Player</a> <a href="../SPEC.md" data-i18n="spec">Spec</a> <a href="https://plankmd.org" data-i18n-href="site">plankmd.org</a></p>
 </header>
 <main id="grid"></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="i18n.js"></script>
+<script src="github.js"></script>
 <script src="../src/plankmd.js"></script>
 <script src="samples.js"></script>
 <script>
@@ -56,7 +57,7 @@ I18N.translatePage(lang);
 document.title = T.galleryTitle;
 const cards = []; // [card, facts element, result, name]: their texts change with the language
 function label(a, facts, result, name) {
-  a.href = I18N.sibling(`index.html#${name}`, lang);
+  a.href = github ? playerLink(name) : I18N.sibling(`index.html#${name}`, lang);
   facts.textContent = [T.planks(result.planks.length), T.steps(result.steps.length)]
     .concat(result.meta.difficulty ? [T.difficulty(result.meta.difficulty)] : []).join(', ');
 }
@@ -66,6 +67,7 @@ I18N.onSwitch((next) => {
   I18N.translatePage(lang);
   document.title = T.galleryTitle;
   for (const c of cards) label(...c);
+  if (github) introduce(introduce.last);
 });
 
 // Renders each bundled model once, off screen, into a still image.
@@ -104,11 +106,10 @@ function thumbnail(result) {
 }
 
 const grid = document.getElementById('grid');
-const all = window.PLANKMD_SAMPLES || {};
-const names = Object.keys(all).filter((n) => n.startsWith('gallery/')).concat(Object.keys(all).filter((n) => !n.startsWith('gallery/')));
-for (const name of names) {
-  const result = PlankMD.validate(all[name]);
-  if (!result.planks.length) continue;
+
+function addCard(text, name) {
+  const result = PlankMD.validate(text);
+  if (!result.planks.length) return;
   const a = document.createElement('a');
   a.className = 'card';
   const img = document.createElement('img');
@@ -116,7 +117,7 @@ for (const name of names) {
   img.src = thumbnail(result);
   const info = document.createElement('div');
   const title = document.createElement('b');
-  title.textContent = result.meta.title || name;
+  title.textContent = result.meta.title || name.split('/').pop();
   const facts = document.createElement('span');
   cards.push([a, facts, result, name]);
   label(a, facts, result, name);
@@ -124,7 +125,70 @@ for (const name of names) {
   a.append(img, info);
   grid.appendChild(a);
 }
-document.body.dataset.ready = 'true';
+
+// ?github=<address> (or ?repo=): the models of a GitHub repository, folder or
+// gist instead of the bundled ones (see github.js). One model opens straight
+// in the player.
+const GH = window.PlankMDGitHub;
+const githubAddress = GH.fromSearch(location.search);
+const github = githubAddress ? { address: githubAddress, spec: GH.parse(githubAddress), files: [] } : null;
+
+function playerLink(path) {
+  const params = new URLSearchParams({ github: github.address });
+  if (github.files.length > 1) params.set('file', path);
+  if (new URLSearchParams(location.search).has('lang')) params.set('lang', lang);
+  return `index.html?${params}`;
+}
+
+function introduce(message) {
+  const intro = document.getElementById('intro');
+  intro.removeAttribute('data-i18n');
+  intro.textContent = message ? message() : T.githubIntro(github.files.length, GH.label(github.spec));
+  if (!message && !document.getElementById('repo-link')) {
+    const link = document.createElement('a');
+    link.id = 'repo-link';
+    link.href = GH.htmlUrl(github.spec);
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = GH.label(github.spec);
+    document.querySelector('header .links').prepend(link);
+  }
+  introduce.last = message;
+}
+
+async function showGitHub() {
+  if (!github.spec) { introduce(() => T.githubBadAddress(github.address)); return; }
+  introduce(() => T.githubLoading(GH.label(github.spec)));
+  try {
+    github.files = await GH.cachedList(github.spec);
+  } catch (err) {
+    const detail = err.reason === 'rate-limit' && err.reset ? err.reset.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }) : err.message;
+    introduce(() => T.githubFailed(GH.label(github.spec), T.githubWhy(err.reason, detail)));
+    return;
+  }
+  if (github.files.length === 1) { location.replace(playerLink(github.files[0].path)); return; }
+  introduce();
+  // Fetch four at a time, then show them in the order of their paths.
+  const texts = new Array(github.files.length);
+  let next = 0;
+  await Promise.all([0, 1, 2, 3].map(async () => {
+    while (next < github.files.length) {
+      const i = next++;
+      try { texts[i] = await GH.text(github.files[i]); } catch { /* skipped: the player says why if it is opened */ }
+    }
+  }));
+  github.files.forEach((f, i) => { if (texts[i]) addCard(texts[i], f.path); });
+}
+
+if (github) {
+  showGitHub().finally(() => { document.body.dataset.ready = 'true'; });
+} else {
+  const all = window.PLANKMD_SAMPLES || {};
+  const names = Object.keys(all).filter((n) => n.startsWith('gallery/')).concat(Object.keys(all).filter((n) => !n.startsWith('gallery/')));
+  for (const name of names) addCard(all[name], name);
+  document.body.dataset.ready = 'true';
+}
+
 </script>
 </body>
 </html>

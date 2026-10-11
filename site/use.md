@@ -97,9 +97,28 @@ the optional solvers, which load from a CDN.
 | `/player/#corbel-bridge` | A bundled sample or gallery model, by name |
 | `/player/?src=<url>` | A `.plank.md` file from the web (served with CORS) |
 | `/player/#code=<base64url>` | A model given in the link itself (UTF-8 text, base64url) |
+| `/p?repo=<GitHub address>` | The models of a GitHub repository, folder, file or gist (see below) |
 | `/player/?lang=fr` | The player in French (`en` for English) |
 
 You can also paste a model into the source panel, or drop a file on the scene.
+
+## Share your models from GitHub
+
+Put your `.plank.md` files in a public GitHub repository, and share one link:
+
+```
+https://plankmd.org/p?repo=https://github.com/you/your-models
+```
+
+It opens a gallery of every `.plank.md` file in the repository, or straight
+the player when there is only one. The address can also be a folder
+(`.../tree/main/castles`), one file (`.../blob/main/castle.plank.md`), a gist,
+or just `you/your-models`. Add `&file=<path>` to open one model of the
+repository in the player.
+
+Everything happens in the visitor's browser: the files are read from GitHub
+directly, nothing is stored by plankmd.org. GitHub allows 60 listings an hour
+per visitor without an account; files themselves are not limited.
 
 ## Source
 

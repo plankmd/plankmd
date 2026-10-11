@@ -103,10 +103,32 @@ code et les mêmes numéros de ligne et de planchette qu'en ligne de commande.
 | `/player/#corbel-bridge` | Un exemple ou un modèle de la galerie, par son nom |
 | `/player/?src=<url>` | Un fichier `.plank.md` sur le web (servi avec CORS) |
 | `/player/#code=<base64url>` | Un modèle contenu dans le lien lui-même (texte UTF-8 en base64url) |
+| `/p?repo=<adresse GitHub>` | Les modèles d'un dépôt, d'un dossier, d'un fichier ou d'un gist GitHub (voir plus bas) |
 | `/player/?lang=fr` | Le lecteur en français (`en` pour l'anglais) |
 
 Vous pouvez aussi coller un modèle dans le panneau de source, ou déposer un
 fichier sur la scène.
+
+## Partager vos modèles depuis GitHub
+
+Mettez vos fichiers `.plank.md` dans un dépôt GitHub public, et partagez un
+seul lien :
+
+```
+https://plankmd.org/p?repo=https://github.com/vous/vos-modeles
+```
+
+Il ouvre une galerie de tous les fichiers `.plank.md` du dépôt, ou
+directement le lecteur s'il n'y en a qu'un. L'adresse peut aussi être un
+dossier (`.../tree/main/chateaux`), un seul fichier
+(`.../blob/main/chateau.plank.md`), un gist, ou simplement
+`vous/vos-modeles`. Ajoutez `&file=<chemin>` pour ouvrir un modèle précis du
+dépôt dans le lecteur.
+
+Tout se passe dans le navigateur du visiteur : les fichiers sont lus
+directement sur GitHub, plankmd.org ne stocke rien. Sans compte, GitHub
+autorise 60 listes de dépôt par heure et par visiteur ; les fichiers
+eux-mêmes ne sont pas limités.
 
 ## Le code source
 

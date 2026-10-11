@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>PlankMD</title>
+<script>
+// Short links to models on GitHub, opened in the browser only:
+//   plankmd.org/p?repo=<GitHub repository, folder, file or gist>
+//   plankmd.org/p?repo=<repository>&file=<path of one model>
+// A repository opens in the gallery (or in the player when it holds one
+// model), a file opens in the player. See player/github.js.
+(function () {
+  var params = new URLSearchParams(location.search);
+  var address = params.get('repo') || params.get('github');
+  if (!address) { location.replace('/player/gallery.html' + location.search); return; }
+  params.delete('repo');
+  params.set('github', address);
+  var single = params.has('file') || /\/blob\/|raw\.githubusercontent\.com|\.plank\.md$/i.test(address);
+  location.replace('/player/' + (single ? '' : 'gallery.html') + '?' + params.toString());
+})();
+</script>
+</head>
+<body>
+<p><a href="/player/">PlankMD player</a></p>
+</body>
+</html>

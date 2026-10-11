@@ -42,7 +42,8 @@ html[lang="fr"] .label { width: 72px; }
 .lang button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); font-weight: 600; position: relative; }
 .count { min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 #title { font-size: 18px; font-weight: 650; margin: 2px 0 0; }
-#facts { color: var(--muted); margin: 0; }
+#facts, #source { color: var(--muted); margin: 0; }
+#source a { color: var(--accent); overflow-wrap: anywhere; }
 #step-title { font-weight: 600; margin: 0; }
 #step-text { margin: 0; white-space: pre-line; }
 #step-guides { margin: 0; color: #3f6fa8; font-size: 13px; }
@@ -99,6 +100,7 @@ footer a { color: inherit; }
     <div>
       <p id="title"></p>
       <p id="facts"></p>
+      <p id="source" hidden><span id="source-label"></span> <a id="source-link" target="_blank" rel="noopener"></a></p>
       <label class="toggle"><input type="checkbox" id="balance-on"> <span data-i18n="checkBalance">Check balance</span> <span class="muted" data-i18n="slow">(slow on big models)</span></label>
       <p id="balance"></p>
     </div>
@@ -119,6 +121,7 @@ footer a { color: inherit; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="i18n.js"></script>
+<script src="github.js"></script>
 <script src="../src/plankmd.js"></script>
 <script src="../src/physics.js"></script>
 <script src="../src/drop.js"></script>
@@ -584,9 +587,11 @@ function receiveBalance({ id, analysis, error, progress, partial }) {
   if (!sim) draw();
 }
 
-function load(text, name) {
+// `pick` is the value of the model in the picker, when it is not a sample.
+function load(text, name, pick) {
   loadError = null;
-  $('pick').value = name in samples ? name : '';
+  $('pick').value = pick || (name in samples ? name : '');
+  if (!pick) showSource(null);
   $('src').value = text;
   state = null;
   run(false);
@@ -688,7 +693,11 @@ $('reset').addEventListener('click', () => { draw(); });
 // ------------------------------------------------------------------ input
 const samples = window.PLANKMD_SAMPLES || {};
 for (const name of Object.keys(samples)) $('pick').add(new Option(name, name));
-$('pick').addEventListener('change', () => load(samples[$('pick').value], $('pick').value));
+$('pick').addEventListener('change', () => {
+  const value = $('pick').value;
+  if (github.files.has(value)) openGitHubFile(github.files.get(value));
+  else load(samples[value], value);
+});
 
 let timer = null;
 $('src').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => run(true), 150); });
@@ -754,6 +763,68 @@ if (srcUrl) {
     .then((text) => load(text, srcUrl.split('/').pop()))
     .catch((err) => { loadError = () => T.loadFailed(srcUrl, err.message); renderDiagnostics(); });
 }
+
+// ---------------------------------------------------------------- GitHub
+// ?github=<address> (or ?repo=) opens the models of a GitHub repository,
+// folder, file or gist, straight from GitHub (see github.js): they are added
+// to the picker, and &file=<path> picks one. Nothing goes through a server.
+const GH = window.PlankMDGitHub;
+const github = { spec: null, files: new Map() };
+
+function showSource(file) {
+  $('source').hidden = !file;
+  if (!file) return;
+  say('source-label', () => T.githubFrom);
+  const link = $('source-link');
+  link.textContent = github.spec.kind === 'gist' ? `${GH.label(github.spec)}: ${file.path}` : `${github.spec.owner}/${github.spec.repo}/${file.path}`;
+  link.href = github.spec.kind === 'gist' ? GH.htmlUrl(github.spec) : GH.htmlUrl({ ...github.spec, kind: 'file', path: file.path });
+}
+
+function githubError(err) {
+  const where = GH.label(github.spec);
+  const detail = err.reason === 'rate-limit' && err.reset ? err.reset.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }) : err.message;
+  loadError = () => T.githubFailed(where, T.githubWhy(err.reason, detail));
+  showSource(null);
+  renderDiagnostics();
+}
+
+async function openGitHubFile(file) {
+  $('source').hidden = false;
+  say('source-label', () => T.githubLoading(GH.label(github.spec)));
+  $('source-link').textContent = '';
+  let text;
+  try { text = await GH.text(file); } catch (err) { githubError(err); return; }
+  load(text, file.name, `gh:${file.path}`);
+  showSource(file);
+  // Keep the address shareable: it names the model shown.
+  const params = new URLSearchParams(location.search);
+  if (github.files.size > 1) params.set('file', file.path); else params.delete('file');
+  try { history.replaceState(null, '', `${location.pathname}?${params}`); } catch { /* file:// in some browsers */ }
+}
+
+async function loadGitHub(address) {
+  github.spec = GH.parse(address);
+  if (!github.spec) {
+    loadError = () => T.githubBadAddress(address);
+    renderDiagnostics();
+    return;
+  }
+  $('source').hidden = false;
+  say('source-label', () => T.githubLoading(GH.label(github.spec)));
+  let files;
+  try { files = await GH.cachedList(github.spec); } catch (err) { githubError(err); return; }
+  const group = document.createElement('optgroup');
+  group.label = T.githubGroup(GH.label(github.spec));
+  for (const f of files) {
+    github.files.set(`gh:${f.path}`, f);
+    group.appendChild(new Option(f.path, `gh:${f.path}`));
+  }
+  $('pick').insertBefore(group, $('pick').firstChild);
+  const wanted = new URLSearchParams(location.search).get('file');
+  await openGitHubFile(files.find((f) => f.path === wanted) || files[0]);
+}
+const githubAddress = GH.fromSearch(location.search);
+if (githubAddress) loadGitHub(githubAddress);
 
 // Render only when something changed: the camera moved, the model was
 // redrawn, or a simulation is running. An idle page then costs nothing.
