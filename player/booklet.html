@@ -47,11 +47,12 @@ img { display: block; width: 100%; height: auto; border-radius: 2mm; }
 </style>
 </head>
 <body>
-<div class="bar"><button id="print">Print or save as PDF</button><span id="status">Drawing the views…</span> <a href="index.html">Player</a></div>
+<div class="bar"><button id="print">Print or save as PDF</button><span id="status">Drawing the views…</span> <a id="to-player" href="index.html">Player</a></div>
 <div id="book"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="../src/plankmd.js"></script>
 <script src="samples.js"></script>
+<script src="source.js"></script>
 <script src="wood.js"></script>
 <script src="render.js"></script>
 <script>
@@ -61,26 +62,31 @@ img { display: block; width: 100%; height: auto; border-radius: 2mm; }
 // step (the planks of earlier steps faded, the guides shown) and, for long
 // steps, small views of the order in which its planks go. Print it, or save
 // it as PDF from the print dialog; scripts/booklet.js does that in Chrome.
-// Same addresses as the player: #<sample>, ?src=<url>, #code=<base64url>.
+// Same addresses as the player: #<sample>, ?src=<url>, #code=<base64url>
+// (see source.js). The texts come from the model's translation in the
+// booklet's language when there is one.
 
 const params = new URLSearchParams(location.search);
 const FR = params.get('lang') === 'fr';
+const LANG = FR ? 'fr' : 'en';
 const T = FR ? {
-  planks: 'Planchettes', steps: 'Étapes', difficulty: 'Difficulté', inventory: 'À prévoir', license: 'Licence', size: 'Dimensions',
+  translation: 'Traduction', planks: 'Planchettes', steps: 'Étapes', difficulty: 'Difficulté', inventory: 'À prévoir', license: 'Licence', size: 'Dimensions',
   stepPlanks: (n) => `${n} planchette${n > 1 ? 's' : ''}`, view: (a, b) => `planchettes ${a} à ${b}`,
   guide: (n) => `${n} gabarit${n > 1 ? 's' : ''} (en bleu) : posez-les pour mesurer l'écart, puis retirez-les.`,
   made: 'Notice générée par PlankMD, un format ouvert pour les constructions en planchettes : plankmd.org',
-  print: 'Imprimer ou enregistrer en PDF', drawing: 'Dessin des vues…', ready: (n) => `${n} pages environ.`,
+  player: 'Lecteur', print: 'Imprimer ou enregistrer en PDF', drawing: 'Dessin des vues…', ready: (n) => `${n} pages environ.`,
 } : {
-  planks: 'Planks', steps: 'Steps', difficulty: 'Difficulty', inventory: 'You need', license: 'License', size: 'Size',
+  translation: 'Translation', planks: 'Planks', steps: 'Steps', difficulty: 'Difficulty', inventory: 'You need', license: 'License', size: 'Size',
   stepPlanks: (n) => `${n} plank${n === 1 ? '' : 's'}`, view: (a, b) => `planks ${a} to ${b}`,
   guide: (n) => `${n} guide${n === 1 ? '' : 's'} (in blue): lay ${n === 1 ? 'it' : 'them'} to measure the gap, then take ${n === 1 ? 'it' : 'them'} away.`,
   made: 'Booklet made with PlankMD, an open format for plank constructions: plankmd.org',
-  print: 'Print or save as PDF', drawing: 'Drawing the views…', ready: (n) => `About ${n} pages.`,
+  player: 'Player', print: 'Print or save as PDF', drawing: 'Drawing the views…', ready: (n) => `About ${n} pages.`,
 };
 document.documentElement.lang = FR ? 'fr' : 'en';
 document.getElementById('print').textContent = T.print;
 document.getElementById('status').textContent = T.drawing;
+document.getElementById('to-player').textContent = T.player;
+document.getElementById('to-player').href = `index.html?lang=${LANG}`;
 
 const el = (tag, attrs = {}, ...children) => {
   const e = document.createElement(tag);
@@ -89,15 +95,11 @@ const el = (tag, attrs = {}, ...children) => {
   return e;
 };
 
-// The paragraph under the title, as plain text.
-function description(text) {
-  const body = text.replace(/^---[\s\S]*?\n---\n/, '');
-  const m = body.match(/^#\s.*\n+([\s\S]*?)(?=\n#{1,6}\s|\n```|(?![\s\S]))/m);
-  return m ? m[1].trim().replace(/\s*\n\s*/g, ' ') : '';
-}
-
-function build(text) {
-  const model = PlankMD.validate(text);
+// `translation` is the text of a translation of the model, or nothing.
+function build(text, translation) {
+  const original = PlankMD.validate(text);
+  const tr = translation ? PlankMD.parse(translation) : null;
+  const model = tr ? PlankMD.translate(original, tr) : original;
   const meta = model.meta;
   const render = PlankMDRender.create({ width: 1400, height: 1000, background: '#fbf8f3', ground: '#efe9df' });
   render.setModel(model);
@@ -111,13 +113,14 @@ function build(text) {
   // Cover.
   const cover = el('section', { class: 'page' },
     el('h1', {}, meta.title || 'PlankMD model'),
-    ...(description(text) ? [el('p', { class: 'lead' }, description(text))] : []),
+    ...(model.description ? [el('p', { class: 'lead' }, model.description)] : []),
     el('div', { class: 'facts' },
       ...[[T.planks, model.planks.length], [T.steps, model.steps.length],
         [T.size, `${cm(size.x)} × ${cm(size.z)} × ${cm(size.y)} cm`],
         ...(meta.inventory ? [[T.inventory, meta.inventory]] : []),
         ...(meta.difficulty ? [[T.difficulty, `${meta.difficulty}/5`]] : []),
-        ...(meta.license ? [[T.license, meta.license]] : [])]
+        ...(meta.license ? [[T.license, meta.license]] : []),
+        ...(tr && tr.meta.author ? [[T.translation, tr.meta.author]] : [])]
         .map(([k, v]) => el('div', {}, el('b', {}, String(v)), k))),
     el('img', { class: 'hero', alt: meta.title || '', src: shot({}) }),
     el('p', { class: 'foot' }, T.made));
@@ -132,7 +135,7 @@ function build(text) {
     const first = own.length ? own[0].n : 0;
     const last = own.length ? own[own.length - 1].n : (first - 1);
     const lastBefore = model.planks.filter((p) => p.step < step.number).reduce((n, p) => Math.max(n, p.n), 0);
-    const title = step.title.replace(/^Step\s+\d+\s*:\s*/i, '');
+    const title = step.title.replace(/^\S+\s+\d+\s*:\s*/, ''); // "Step 1: ", "Étape 1 : "...
     const views = el('div', { class: 'views' });
     views.append(el('img', { class: 'main', alt: title, src: shot({ upTo: own.length ? last : lastBefore, fadeBelow: first || Infinity, step: step.number }) }));
     // The order of the step: up to three views of its planks going on.
@@ -160,18 +163,11 @@ function build(text) {
 
 window.PlankMDBooklet = { build };
 
-const samples = window.PLANKMD_SAMPLES || {};
-async function source() {
-  if (location.hash.startsWith('#code=')) {
-    const b64 = location.hash.slice(6).replace(/-/g, '+').replace(/_/g, '/');
-    return new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
-  }
-  if (params.get('src')) return (await fetch(params.get('src'))).text();
-  const name = decodeURIComponent(location.hash.slice(1));
-  return samples[name] || samples['gallery/castle'] || Object.values(samples)[0];
-}
 document.getElementById('print').addEventListener('click', () => window.print());
-if (!params.has('render')) source().then(build);
+if (!params.has('render')) {
+  PlankMDSource.load({ location, lang: LANG, samples: window.PLANKMD_SAMPLES, translations: window.PLANKMD_TRANSLATIONS })
+    .then(({ text, translation }) => build(text, translation));
+}
 else document.body.dataset.ready = 'loading';
 </script>
 </body>

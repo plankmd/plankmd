@@ -46,6 +46,24 @@ test('the French explanations recognise the validator messages', () => {
       seen.add(d.code);
     }
   }
+  const tr = (fm, body) => `---\nplankmd: "0.2"\ntitle: T\ntranslation-of: a.plank.md\n${fm}---\n\n${body}`;
+  const original = '---\ntitle: A\nlang: fr\n---\n\n## One\n\n```plank\nflat-x 0 0 0\n```\n\n## Two\n\n```plank\nflat-x 0 0 1\n```\n';
+  const translations = [
+    [tr('inventory: 3\n', '## Un\n\n```plank\nflat-x 0 0 0\n```\n'), {}],
+    [tr('lang: fr\n', '## Un\n\n```plank\n```\n'), { original }],
+    [tr('lang: fr\n', ''), { original: null }],
+    [tr('lang: fr\n', ''), { original: tr('', '') }],
+    ['---\ntitle: T\ntranslation-of:\n---\n', {}],
+    [tr('lang: en\nsource-hash: 0\n', '## Un\n\n```plank\n```\n\n## Deux\n\n```plank\n```\n'), { original }],
+  ];
+  for (const [doc, options] of translations) {
+    for (const d of validate(doc, options).diagnostics) {
+      const { exact } = I18N.explain(d, 'fr');
+      assert.ok(exact, `${d.code}: ${d.message}`);
+      seen.add(d.code);
+    }
+  }
+  for (const code of ['E-translation-source', 'E-translation-planks', 'W-translation-steps', 'W-translation-lang', 'W-translation-ignored-key', 'W-translation-stale']) assert.ok(seen.has(code), code);
   assert.ok(seen.size >= 12, [...seen].join(' '));
   const e = I18N.explain({ code: 'E-overlap', message: 'plank 7 ("flat-x 0 0 0") goes through plank 2 (line 4)', plank: 7, other: 2 }, 'fr');
   assert.equal(e.text, 'La planchette 7 (« flat-x 0 0 0 ») traverse la planchette 2 (ligne 4)');

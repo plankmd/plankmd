@@ -149,10 +149,30 @@
   }
 
   /** The address parameter of a page: ?github=<address>, or its short form ?repo=. */
+  /**
+   * Splits a listing into models and their translations: a file named
+   * <name>.<lang>.plank.md next to <name>.plank.md is a translation of it
+   * (docs/proposals/translations.md). Returns { models, translations }, where
+   * `translations` maps a model's path to { <lang>: file }.
+   */
+  function translations(files) {
+    const paths = new Set(files.map((f) => f.path));
+    const models = [];
+    const found = new Map();
+    for (const f of files) {
+      const m = f.path.match(/^(.+)\.([a-z]{2,3}(?:-[a-z0-9]+)*)\.plank\.md$/i);
+      const of = m && `${m[1]}.plank.md`;
+      if (!m || !paths.has(of)) { models.push(f); continue; }
+      if (!found.has(of)) found.set(of, {});
+      found.get(of)[m[2].toLowerCase()] = f;
+    }
+    return { models, translations: found };
+  }
+
   function fromSearch(search) {
     const params = new URLSearchParams(search);
     return params.get('github') || params.get('repo');
   }
 
-  return { parse, label, htmlUrl, list, cachedList, text, fromSearch, isModel, MAX_FILES };
+  return { parse, label, htmlUrl, list, cachedList, text, translations, fromSearch, isModel, MAX_FILES };
 });

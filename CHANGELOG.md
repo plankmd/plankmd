@@ -12,6 +12,18 @@
 - The player links to the booklet and the video of the model shown.
 - Drop test: `plankmd drop --replay` replays the build plank by plank, and
   `npm run check:gallery` runs it.
+- Translations (proposal for v0.2, `docs/proposals/translations.md`): a
+  model's text in another language lives in `<name>.<lang>.plank.md` next
+  to it. `parse()` returns the model's `description`, `translate()` merges a
+  translation into a model, and the player and the gallery show the
+  translation in the reader's language (`samples/square-tower.fr.plank.md`).
+  `plankmd validate` checks a translation against the original it names
+  (`E-translation-source`, `E-translation-planks`, `W-translation-steps`,
+  `W-translation-lang`, `W-translation-ignored-key`), and its `source-hash`
+  (`plankmd source-hash <model>`) flags a change in the original's text
+  (`W-translation-stale`).
+  The booklet and the video use the translation in their language too
+  (`?lang=fr`, `--lang fr`), and every gallery model reads in French.
 
 ## 0.1.0 (draft), 2026-10-11
 

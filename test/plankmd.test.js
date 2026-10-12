@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { parse, expand, validate } = require('../src/plankmd.js');
+const { parse, translate, sourceHash, sha256, expand, validate } = require('../src/plankmd.js');
 
 const block = (lines, frontmatter = '') => `${frontmatter}\`\`\`plank\n${lines.join('\n')}\n\`\`\`\n`;
 const codes = (r) => r.diagnostics.map((d) => d.code);
@@ -163,4 +163,112 @@ test('every gallery model is valid with no warning', () => {
     const r = validate(fs.readFileSync(path.join(dir, file), 'utf8'));
     assert.deepEqual(r.diagnostics, [], file);
   }
+});
+
+test('the description is the text between the title and the first step heading', () => {
+  const doc = '# Tower\n\nA small\ntower.\n\nTwo paragraphs.\n\n## Step 1: base\n\nLay it.\n\n```plank\nflat-x 0 0 0\n```\n';
+  const r = parse(doc);
+  assert.equal(r.description, 'A small tower.\n\nTwo paragraphs.');
+  assert.equal(r.steps[0].title, 'Step 1: base');
+  assert.equal(r.steps[0].text, 'Lay it.');
+  assert.equal(parse('## Step 1\n\nLay it.\n\n```plank\nflat-x 0 0 0\n```\n').description, null);
+  assert.equal(parse('# Tower\n\nLay it.\n\n```plank\nflat-x 0 0 0\n```\n').description, null);
+  assert.equal(parse(block(['flat-x 0 0 0'])).description, null);
+});
+
+test('a translation gives the texts, the model everything else', () => {
+  const dir = path.join(__dirname, '..', 'samples');
+  const model = validate(fs.readFileSync(path.join(dir, 'square-tower.plank.md'), 'utf8'));
+  const fr = parse(fs.readFileSync(path.join(dir, 'square-tower.fr.plank.md'), 'utf8'));
+  assert.equal(fr.steps.length, model.steps.length);
+  assert.ok(fr.steps.every((s) => s.lines.length === 0));
+  const shown = translate(model, fr);
+  assert.equal(shown.meta.title, 'Petite tour carrée');
+  assert.equal(shown.meta.lang, 'fr');
+  assert.equal(shown.meta.inventory, model.meta.inventory);
+  assert.match(shown.description, /^Une tour creuse/);
+  assert.equal(shown.steps[2].title, 'Étape 3 : le toit');
+  assert.deepEqual(shown.steps.map((s) => s.lines), model.steps.map((s) => s.lines));
+  assert.equal(shown.planks, model.planks);
+  // A step the translation lacks keeps the model's text.
+  const short = translate(model, parse('---\ntitle: T\n---\n\n## Un\n\n```plank\n```\n'));
+  assert.equal(short.steps[0].title, 'Un');
+  assert.equal(short.steps[1].title, model.steps[1].title);
+  assert.equal(short.description, model.description);
+});
+
+test('a translation holds only text', () => {
+  const tr = (frontmatter, body) => `---\nplankmd: "0.2"\ntitle: T\n${frontmatter}---\n\n${body}`;
+  const empty = '## Un\n\n```plank\n```\n\n## Deux\n\n```plank\n```\n';
+  assert.deepEqual(codes(validate(tr('translation-of: a.plank.md\nlang: fr\n', empty))), []);
+  const r = validate(tr('translation-of: a.plank.md\ninventory: 30\npalette:\n  roof: red\n', '## Un\n\n```plank\nflat-x 0 0 0\nguide flat-x 0 3 0\n```\n'));
+  assert.deepEqual(codes(r).filter((c) => c.includes('translation')).sort(), ['E-translation-planks', 'W-translation-ignored-key', 'W-translation-ignored-key', 'W-translation-lang']);
+  const planks = r.diagnostics.find((d) => d.code === 'E-translation-planks');
+  assert.equal(planks.step, 1);
+  assert.match(planks.message, /^step 1 of a translation has 2 plank lines/);
+  assert.deepEqual(codes(validate(tr('translation-of:\nlang: fr\n', empty))), ['E-translation-source']);
+  // A model is validated as before: the translation checks need "translation-of".
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0'], '---\nplankmd: "0.1"\ntitle: T\ninventory: 3\n---\n'))), []);
+});
+
+test('a translation is checked against its original', () => {
+  const tr = (lang, body) => `---\nplankmd: "0.2"\ntitle: T\ntranslation-of: a.plank.md\nlang: ${lang}\n---\n\n${body}`;
+  const original = '---\nplankmd: "0.1"\ntitle: A\nlang: en\n---\n\n## One\n\n```plank\nflat-x 0 0 0\n```\n\n## Two\n\n```plank\nflat-x 0 0 1\n```\n';
+  const two = '## Un\n\n```plank\n```\n\n## Deux\n\n```plank\n```\n';
+  assert.deepEqual(codes(validate(tr('fr', two), { original })), []);
+  assert.deepEqual(codes(validate(tr('fr', two))), [], 'no original given: only the file itself is checked');
+  const short = validate(tr('fr', '## Un\n\n```plank\n```\n'), { original });
+  assert.deepEqual(codes(short), ['W-translation-steps']);
+  assert.equal(short.diagnostics[0].message, '1 step, but the original "a.plank.md" has 2');
+  assert.deepEqual(codes(validate(tr('en', two), { original })), ['W-translation-lang']);
+  assert.deepEqual(codes(validate(tr('fr', two), { original: null })), ['E-translation-source']);
+  assert.deepEqual(codes(validate(tr('fr', two), { original: tr('de', two) })), ['E-translation-source']);
+  assert.equal(validate(tr('fr', two), { original: null }).valid, false);
+});
+
+test('the command line checks a translation against the file it names', () => {
+  const { execFileSync } = require('child_process');
+  const bin = path.join(__dirname, '..', 'bin', 'plankmd.js');
+  const out = JSON.parse(execFileSync(process.execPath, [bin, 'validate', '--json', path.join(__dirname, '..', 'samples', 'square-tower.fr.plank.md')], { encoding: 'utf8' }));
+  assert.deepEqual(out[0].diagnostics, []);
+  const os = require('os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'plankmd-'));
+  const file = path.join(dir, 'lost.fr.plank.md');
+  fs.writeFileSync(file, '---\nplankmd: "0.2"\ntitle: T\ntranslation-of: lost.plank.md\nlang: fr\n---\n\n## Un\n\n```plank\n```\n');
+  let failed = null;
+  try { execFileSync(process.execPath, [bin, 'validate', '--json', file], { encoding: 'utf8' }); } catch (e) { failed = e; }
+  assert.ok(failed, 'exit code 1');
+  assert.deepEqual(JSON.parse(failed.stdout)[0].diagnostics.map((d) => d.code), ['E-translation-source']);
+  fs.rmSync(dir, { recursive: true });
+});
+
+test('sha256 matches the standard one', () => {
+  const crypto = require('crypto');
+  for (const text of ['', 'abc', 'é'.repeat(55), 'x'.repeat(64), 'Étape 1 : 中文 😀\n'.repeat(20)]) {
+    assert.equal(sha256(text), crypto.createHash('sha256').update(text, 'utf8').digest('hex'), JSON.stringify(text));
+  }
+});
+
+test('the source hash of a translation flags a change in the original text', () => {
+  const original = '---\ntitle: A\nlang: en\n---\n\n# A\n\nAbout A.\n\n## One\n\nLay it.\n\n```plank\nflat-x 0 0 0\n```\n';
+  const hash = sourceHash(parse(original));
+  assert.equal(hash, sha256('A\nAbout A.\nOne\nLay it.\n'));
+  const tr = (h) => `---\nplankmd: "0.2"\ntitle: T\ntranslation-of: a.plank.md\nlang: fr\nsource-hash: ${h}\n---\n\n## Un\n\n\`\`\`plank\n\`\`\`\n`;
+  assert.deepEqual(codes(validate(tr(hash), { original })), []);
+  // The geometry is not part of the fingerprint, the text is.
+  assert.deepEqual(codes(validate(tr(hash), { original: original.replace('flat-x 0 0 0', 'flat-y 0 0 0') })), []);
+  for (const changed of [original.replace('Lay it.', 'Lay it flat.'), original.replace('About A.', 'About B.'), original.replace('title: A', 'title: B')]) {
+    const r = validate(tr(hash), { original: changed });
+    assert.deepEqual(codes(r), ['W-translation-stale']);
+    assert.ok(r.diagnostics[0].message.endsWith(sourceHash(parse(changed))));
+  }
+  assert.deepEqual(codes(validate(tr('nope'), { original })), ['W-translation-stale']);
+});
+
+test('the command line prints the source hash of a model', () => {
+  const { execFileSync } = require('child_process');
+  const file = path.join(__dirname, '..', 'samples', 'square-tower.plank.md');
+  const out = execFileSync(process.execPath, [path.join(__dirname, '..', 'bin', 'plankmd.js'), 'source-hash', file], { encoding: 'utf8' });
+  assert.equal(out.trim(), sourceHash(parse(fs.readFileSync(file, 'utf8'))));
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'samples', 'square-tower.fr.plank.md'), 'utf8'), new RegExp(`^source-hash: ${out.trim()}$`, 'm'));
 });

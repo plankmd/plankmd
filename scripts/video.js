@@ -10,12 +10,15 @@
 // or CHROME_PATH), asks it for every frame in turn and pipes the pictures to
 // ffmpeg, so the video is smooth whatever the speed of the machine. Needs
 // Chrome, ffmpeg, and the puppeteer-core dev dependency (npm install).
+// With --lang, the texts come from the model's translation in that language
+// (<name>.<lang>.plank.md next to it) when there is one.
 // The result is H.264 in an MP4 container, ready for YouTube: 1920 × 1080,
 // or 1080 × 1920 with --vertical, for Shorts.
 
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { openPlayerPage } = require('./chrome.js');
+const { translationFile } = require('./translation.js');
 
 function parseArgs(argv) {
   const opts = { fps: 30, crf: 20, lang: 'en', vertical: false, file: null, out: null };
@@ -37,14 +40,15 @@ function parseArgs(argv) {
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const text = fs.readFileSync(opts.file, 'utf8');
+  const tr = translationFile(opts.file, text, opts.lang);
   const search = `?render=1&lang=${encodeURIComponent(opts.lang)}${opts.vertical ? '&format=vertical' : ''}`;
   const { browser, page } = await openPlayerPage('video.html', search);
   try {
     await page.waitForFunction(() => window.PlankMDVideo && document.body.dataset.ready === 'true');
-    const info = await page.evaluate((t) => window.PlankMDVideo.load(t), text);
+    const info = await page.evaluate((t, translation) => window.PlankMDVideo.load(t, translation), text, tr && tr.text);
     const frames = Math.ceil(info.duration * opts.fps);
     const [w, h] = opts.vertical ? [1080, 1920] : [1920, 1080];
-    console.log(`${opts.file}: "${info.title}", ${info.planks} planks, ${info.steps} steps, ${info.duration.toFixed(1)} s, ${frames} frames`);
+    console.log(`${opts.file}: "${info.title}", ${info.planks} planks, ${info.steps} steps, ${info.duration.toFixed(1)} s, ${frames} frames${tr ? `, text from ${tr.file}` : ''}`);
 
     const ffmpeg = spawn('ffmpeg', [
       '-y', '-loglevel', 'error',

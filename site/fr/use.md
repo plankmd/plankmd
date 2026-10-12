@@ -120,8 +120,10 @@ construction, dans le navigateur, depuis les liens en bas du lecteur :
 | `/player/video.html#<exemple>` | Une vidéo de construction : un titre, la carte de chaque étape, les planchettes qui se posent une à une. Lisez-la, ou enregistrez-la (MP4 ou WebM selon le navigateur). |
 
 Les deux pages acceptent les mêmes adresses que le lecteur (`?src=<url>`,
-`#code=<base64url>`) et `?lang=fr`. Depuis un clone du dépôt, avec Chrome et
-ffmpeg installés, deux scripts produisent les fichiers :
+`#code=<base64url>`) et `?lang=fr`. En français (`?lang=fr`, `--lang fr`), les
+textes viennent de la traduction du modèle quand elle existe
+(`castle.fr.plank.md` à côté de `castle.plank.md`). Depuis un clone du dépôt,
+avec Chrome et ffmpeg installés, deux scripts produisent les fichiers :
 
 ```bash
 npm run booklet -- gallery/castle.plank.md --lang fr  # castle.pdf

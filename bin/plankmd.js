@@ -9,6 +9,7 @@ const USAGE = `Usage:
   plankmd validate <file.plank.md>... [--json] [--strict] [--physics [--all-tilts]]
   plankmd expand <file.plank.md> [--json]
   plankmd drop <file.plank.md>... [--replay] [--json]
+  plankmd source-hash <file.plank.md>
 
 validate  Checks each file. Exit code 1 on any error (and on any warning with --strict).
 expand    Prints every plank in placement order, with its number and geometry.
@@ -17,6 +18,9 @@ drop      Drops the finished model in a physics engine (Rapier) and reports
           which planks moved. Needs the "@dimforge/rapier3d-compat" package.
           --replay places the planks one by one, in building order, and
           reports the first placement after which something moved.
+source-hash  Prints the fingerprint of a model's text, to set as
+          "source-hash" in its translations: validate then warns
+          (W-translation-stale) when the model's text changes.
 
   --json    Machine-readable output.
   --strict  Treat warnings as errors.
@@ -38,7 +42,7 @@ async function main(argv) {
   const args = argv.filter((a) => !a.startsWith('--'));
   const flags = new Set(argv.filter((a) => a.startsWith('--')));
   const [command, ...files] = args;
-  if (!command || flags.has('--help') || !['validate', 'expand', 'drop'].includes(command) || files.length === 0) {
+  if (!command || flags.has('--help') || !['validate', 'expand', 'drop', 'source-hash'].includes(command) || files.length === 0) {
     console.log(USAGE);
     return command && !flags.has('--help') ? 2 : 0;
   }
@@ -47,7 +51,13 @@ async function main(argv) {
     let text;
     try { text = fs.readFileSync(file, 'utf8'); }
     catch (e) { return { file, error: e.message }; }
-    return Object.assign({ file }, PlankMD.validate(text));
+    // A translation is also checked against the original it names.
+    const of = PlankMD.parse(text).meta['translation-of'];
+    const options = {};
+    if (command === 'validate' && typeof of === 'string' && of) {
+      try { options.original = fs.readFileSync(path.resolve(path.dirname(file), of), 'utf8'); } catch { options.original = null; }
+    }
+    return Object.assign({ file }, PlankMD.validate(text, options));
   });
   if (command === 'validate' && flags.has('--physics')) {
     let loaded;
@@ -93,6 +103,13 @@ async function main(argv) {
         : `✗ ${o.file}: ${o.fellAt ? `fell during the build, once plank ${plank} was placed: ` : ''}${o.moved.length ? `${o.moved.length} plank${o.moved.length === 1 ? '' : 's'} moved${most}` : 'planks moved, then settled by the end'}`);
     }
     return failed ? 1 : 0;
+  }
+
+  if (command === 'source-hash') {
+    const r = results[0];
+    if (r.error) { console.error(`${r.file}: ${r.error}`); return 2; }
+    console.log(PlankMD.sourceHash(r));
+    return 0;
   }
 
   if (command === 'expand') {

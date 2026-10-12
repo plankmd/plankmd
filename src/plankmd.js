@@ -141,13 +141,116 @@
     return { fm, blocks };
   }
 
+  function paragraphs(lines) {
+    return lines.join('\n').split(/\n\s*\n/)
+      .map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean).join('\n\n');
+  }
+
   function stepText(prose) {
     let headingIndex = -1;
     prose.forEach((l, i) => { if (/^#{1,6}\s/.test(l)) headingIndex = i; });
     const title = headingIndex >= 0 ? prose[headingIndex].replace(/^#{1,6}\s+/, '').trim() : null;
-    const paragraphs = prose.slice(headingIndex + 1).join('\n').split(/\n\s*\n/)
-      .map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
-    return { title, text: paragraphs.join('\n\n') };
+    return { title, text: paragraphs(prose.slice(headingIndex + 1)) };
+  }
+
+  // The model's description: the text between the document's "# Title" and
+  // the next heading, before the first block. None without both headings.
+  function descriptionText(prose) {
+    const headings = [];
+    prose.forEach((l, i) => { if (/^#{1,6}\s/.test(l)) headings.push(i); });
+    if (headings.length < 2 || !/^#\s/.test(prose[headings[0]])) return null;
+    return paragraphs(prose.slice(headings[0] + 1, headings[1])) || null;
+  }
+
+  // SHA-256 of a string's UTF-8 bytes, as lowercase hex. Synchronous, for
+  // validate(): the browser's crypto.subtle only answers with a promise.
+  const ror = (x, n) => (x >>> n) | (x << (32 - n));
+  const SHA_K = (() => {
+    const k = [];
+    for (let n = 2; k.length < 64; n++) {
+      let prime = true;
+      for (let d = 2; d * d <= n; d++) if (n % d === 0) { prime = false; break; }
+      if (prime) k.push((Math.cbrt(n) % 1) * 0x100000000 >>> 0);
+    }
+    return k;
+  })();
+  function sha256(text) {
+    const bytes = new TextEncoder().encode(text);
+    const n = bytes.length;
+    const words = new Uint32Array(((n + 9 + 63) >> 6) << 4);
+    for (let i = 0; i < n; i++) words[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
+    words[n >> 2] |= 0x80 << (24 - (n % 4) * 8);
+    words[words.length - 2] = Math.floor(n / 0x20000000);
+    words[words.length - 1] = (n * 8) >>> 0;
+    let h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const w = new Uint32Array(64);
+    for (let i = 0; i < words.length; i += 16) {
+      for (let t = 0; t < 16; t++) w[t] = words[i + t];
+      for (let t = 16; t < 64; t++) {
+        const s0 = ror(w[t - 15], 7) ^ ror(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+        const s1 = ror(w[t - 2], 17) ^ ror(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+      }
+      let [a, b, c, d, e, f, g, k] = h;
+      for (let t = 0; t < 64; t++) {
+        const t1 = (k + (ror(e, 6) ^ ror(e, 11) ^ ror(e, 25)) + ((e & f) ^ (~e & g)) + SHA_K[t] + w[t]) | 0;
+        const t2 = ((ror(a, 2) ^ ror(a, 13) ^ ror(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+        k = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      h = [a, b, c, d, e, f, g, k].map((x, j) => (x + h[j]) | 0);
+    }
+    return h.map((x) => (x >>> 0).toString(16).padStart(8, '0')).join('');
+  }
+
+  /**
+   * The fingerprint of a model's text, for the "source-hash" of its
+   * translations: the SHA-256 of its title, its description, then each
+   * step's title and text, as parse() reads them, each followed by a line
+   * feed. `doc` is a result of parse() or validate().
+   */
+  function sourceHash(doc) {
+    const texts = [doc.meta.title || '', doc.description || ''];
+    for (const step of doc.steps) texts.push(step.title, step.text);
+    return sha256(texts.map((t) => `${t}\n`).join(''));
+  }
+
+  // A translation (docs/proposals/translations.md) holds only text: its
+  // geometry and the keys that describe the building come from the original.
+  const ORIGINAL_ONLY = ['plank', 'unit_mm', 'inventory', 'difficulty', 'palette'];
+
+  function checkTranslation(meta, steps, diagnostics) {
+    const of = meta['translation-of'];
+    if (typeof of !== 'string' || !of) diag(diagnostics, 'E-translation-source', 'The "translation-of" key names no file');
+    if (!meta.lang) diag(diagnostics, 'W-translation-lang', 'A translation has no "lang"');
+    for (const key of ORIGINAL_ONLY) {
+      if (meta[key] !== undefined) diag(diagnostics, 'W-translation-ignored-key', `"${key}" is ignored in a translation: it comes from the original`);
+    }
+    for (const step of steps) {
+      const n = step.lines.length;
+      if (n) {
+        diag(diagnostics, 'E-translation-planks', `step ${step.number} of a translation has ${n} plank line${n === 1 ? '' : 's'}: the geometry comes from the original`,
+          { step: step.number, line: step.lines[0].line });
+      }
+    }
+  }
+
+  // The checks of a translation against its original: `original` is the
+  // original's text, or null when the file named by "translation-of" is missing.
+  function compareTranslation(doc, original, diagnostics) {
+    const of = doc.meta['translation-of'];
+    if (original === null) { diag(diagnostics, 'E-translation-source', `The original "${of}" does not exist`); return; }
+    const source = parse(original);
+    if (source.meta['translation-of'] !== undefined) { diag(diagnostics, 'E-translation-source', `The original "${of}" is itself a translation`); return; }
+    if (doc.steps.length !== source.steps.length) {
+      diag(diagnostics, 'W-translation-steps', `${doc.steps.length} step${doc.steps.length === 1 ? '' : 's'}, but the original "${of}" has ${source.steps.length}`);
+    }
+    if (doc.meta.lang && doc.meta.lang === source.meta.lang) {
+      diag(diagnostics, 'W-translation-lang', `"lang" is "${doc.meta.lang}", the language of the original`);
+    }
+    const hash = doc.meta['source-hash'];
+    if (hash !== undefined && hash !== sourceHash(source)) {
+      diag(diagnostics, 'W-translation-stale', `The text of the original "${of}" has changed since this translation: check it, then set "source-hash" to ${sourceHash(source)}`);
+    }
   }
 
   function parseNums(value, count) {
@@ -201,7 +304,7 @@
 
   /**
    * Parses a .plank.md document.
-   * Returns { meta, steps: [{ number, title, text, lines, line }], diagnostics }.
+   * Returns { meta, description, steps: [{ number, title, text, lines, line }], diagnostics }.
    */
   function parse(text) {
     const diagnostics = [];
@@ -216,7 +319,26 @@
         .filter(Boolean);
       return { number, title: title || `Step ${number}`, text: body, lines, line: block.firstLine - 1 };
     });
-    return { meta, steps, diagnostics };
+    if (rawMeta['translation-of'] !== undefined) checkTranslation(rawMeta, steps, diagnostics);
+    const description = blocks.length ? descriptionText(blocks[0].prose) : null;
+    return { meta, description, steps, diagnostics };
+  }
+
+  /**
+   * A model shown in the language of one of its translations (see
+   * docs/proposals/translations.md): the geometry and the frontmatter come
+   * from `model`, the title, the description and the step texts from
+   * `translation`, matched by step number. Both are results of parse() or
+   * validate(). What the translation lacks stays in the model's language.
+   */
+  function translate(model, translation) {
+    const tr = translation.meta;
+    const meta = Object.assign({}, model.meta, { title: tr.title || model.meta.title, lang: tr.lang || model.meta.lang });
+    const steps = model.steps.map((s, i) => {
+      const t = translation.steps[i];
+      return t ? Object.assign({}, s, { title: t.title, text: t.text || s.text }) : s;
+    });
+    return Object.assign({}, model, { meta, description: translation.description || model.description, steps });
   }
 
   // -------------------------------------------------------------- expansion
@@ -318,9 +440,15 @@
    * soon as there is one error. Diagnostics carry `line` (1-based, in the
    * file), and `plank` / `step` when they concern a plank.
    */
-  function validate(text) {
+  /**
+   * Validates a .plank.md document. For a translation, `options.original` is
+   * the text of the file its "translation-of" names (null if there is none):
+   * given, the translation is also checked against it.
+   */
+  function validate(text, options = {}) {
     const doc = parse(text);
     const diagnostics = doc.diagnostics;
+    if (doc.meta['translation-of'] !== undefined && options.original !== undefined) compareTranslation(doc, options.original, diagnostics);
     const planks = expand(doc);
     const ids = new Map();
     const placed = [];
@@ -381,6 +509,7 @@
     diagnostics.sort((a, b) => (a.line || 0) - (b.line || 0) || (a.plank || 0) - (b.plank || 0));
     return {
       meta: doc.meta,
+      description: doc.description,
       steps: doc.steps,
       planks,
       guides: rulers,
@@ -389,5 +518,5 @@
     };
   }
 
-  return { SPEC_VERSION, DEFAULT_PLANK, ORIENTATIONS, parse, expand, guides, validate };
+  return { SPEC_VERSION, DEFAULT_PLANK, ORIENTATIONS, parse, translate, sourceHash, sha256, expand, guides, validate };
 });

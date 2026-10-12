@@ -113,7 +113,9 @@ in the browser, from the links at the bottom of the player:
 | `/player/video.html#<sample>` | A building video: a title, each step's card, the planks dropping in one by one. Play it, or record it (MP4 or WebM, depending on the browser). |
 
 Both take the same addresses as the player (`?src=<url>`, `#code=<base64url>`)
-and `?lang=fr`. From a clone of the repository, with Chrome and ffmpeg
+and `?lang=fr`. In another language (`?lang=fr`, `--lang fr`), the texts come
+from the model's translation when it has one (`castle.fr.plank.md` next to
+`castle.plank.md`). From a clone of the repository, with Chrome and ffmpeg
 installed, two scripts make the files:
 
 ```bash
