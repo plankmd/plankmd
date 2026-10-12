@@ -1,12 +1,12 @@
 ---
 layout: home
 title: PlankMD
-titleTemplate: Un format ouvert pour les constructions en planchettes de bois
+titleTemplate: Un standard ouvert pour les constructions en planchettes de bois
 
 hero:
   name: PlankMD
-  text: Des constructions en planchettes de bois, en Markdown
-  tagline: Une planchette par ligne, un bloc par étape de montage. Un modèle 3D et un livret de montage dans un seul fichier texte.
+  text: Un standard ouvert pour décrire les constructions en planchettes de bois
+  tagline: "Décrivez n'importe quelle construction en Markdown : chaque planchette, dans l'ordre de pose, avec les étapes de montage. Un seul fichier texte, que les outils vérifient, affichent en 3D et impriment en notice. Libre et open source."
   image:
     src: /logo-wide.svg
     alt: PlankMD

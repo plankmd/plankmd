@@ -1,12 +1,12 @@
 ---
 layout: home
 title: PlankMD
-titleTemplate: An open format for wooden plank constructions
+titleTemplate: An open standard for wooden plank constructions
 
 hero:
   name: PlankMD
-  text: Wooden plank constructions, in Markdown
-  tagline: One plank per line, one fenced block per building step. A 3D model and an instruction booklet in a single plain-text file.
+  text: An open standard for wooden plank constructions
+  tagline: "Describe any build in plain Markdown: every plank, in the order it goes down, with the building steps. One text file that tools can check, show in 3D and print as a booklet. Free and open source."
   image:
     src: /logo-wide.svg
     alt: PlankMD
