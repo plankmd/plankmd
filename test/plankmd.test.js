@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { parse, expand, validate } = require('../src/plankmd.js');
+const { parse, translate, expand, validate } = require('../src/plankmd.js');
 
 const block = (lines, frontmatter = '') => `${frontmatter}\`\`\`plank\n${lines.join('\n')}\n\`\`\`\n`;
 const codes = (r) => r.diagnostics.map((d) => d.code);
@@ -163,4 +163,36 @@ test('every gallery model is valid with no warning', () => {
     const r = validate(fs.readFileSync(path.join(dir, file), 'utf8'));
     assert.deepEqual(r.diagnostics, [], file);
   }
+});
+
+test('the description is the text between the title and the first step heading', () => {
+  const doc = '# Tower\n\nA small\ntower.\n\nTwo paragraphs.\n\n## Step 1: base\n\nLay it.\n\n```plank\nflat-x 0 0 0\n```\n';
+  const r = parse(doc);
+  assert.equal(r.description, 'A small tower.\n\nTwo paragraphs.');
+  assert.equal(r.steps[0].title, 'Step 1: base');
+  assert.equal(r.steps[0].text, 'Lay it.');
+  assert.equal(parse('## Step 1\n\nLay it.\n\n```plank\nflat-x 0 0 0\n```\n').description, null);
+  assert.equal(parse('# Tower\n\nLay it.\n\n```plank\nflat-x 0 0 0\n```\n').description, null);
+  assert.equal(parse(block(['flat-x 0 0 0'])).description, null);
+});
+
+test('a translation gives the texts, the model everything else', () => {
+  const dir = path.join(__dirname, '..', 'samples');
+  const model = validate(fs.readFileSync(path.join(dir, 'square-tower.plank.md'), 'utf8'));
+  const fr = parse(fs.readFileSync(path.join(dir, 'square-tower.fr.plank.md'), 'utf8'));
+  assert.equal(fr.steps.length, model.steps.length);
+  assert.ok(fr.steps.every((s) => s.lines.length === 0));
+  const shown = translate(model, fr);
+  assert.equal(shown.meta.title, 'Petite tour carrée');
+  assert.equal(shown.meta.lang, 'fr');
+  assert.equal(shown.meta.inventory, model.meta.inventory);
+  assert.match(shown.description, /^Une tour creuse/);
+  assert.equal(shown.steps[2].title, 'Étape 3 : le toit');
+  assert.deepEqual(shown.steps.map((s) => s.lines), model.steps.map((s) => s.lines));
+  assert.equal(shown.planks, model.planks);
+  // A step the translation lacks keeps the model's text.
+  const short = translate(model, parse('---\ntitle: T\n---\n\n## Un\n\n```plank\n```\n'));
+  assert.equal(short.steps[0].title, 'Un');
+  assert.equal(short.steps[1].title, model.steps[1].title);
+  assert.equal(short.description, model.description);
 });

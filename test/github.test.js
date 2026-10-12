@@ -63,3 +63,13 @@ test('explains failures', async () => {
     (err) => err.reason === 'rate-limit' && err.reset.getTime() === 1700000000000,
   );
 });
+
+test('a file named <name>.<lang>.plank.md next to <name>.plank.md is its translation', () => {
+  const f = (path) => ({ path, name: path.split('/').pop() });
+  const { models, translations } = GH.translations([
+    f('gallery/castle.plank.md'), f('gallery/castle.fr.plank.md'), f('gallery/castle.pt-BR.plank.md'),
+    f('gallery/old.plank.md'), f('samples/tower.fr.plank.md'),
+  ]);
+  assert.deepStrictEqual(models.map((m) => m.path), ['gallery/castle.plank.md', 'gallery/old.plank.md', 'samples/tower.fr.plank.md']);
+  assert.deepStrictEqual(Object.keys(translations.get('gallery/castle.plank.md')), ['fr', 'pt-br']);
+});

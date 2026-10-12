@@ -141,13 +141,25 @@
     return { fm, blocks };
   }
 
+  function paragraphs(lines) {
+    return lines.join('\n').split(/\n\s*\n/)
+      .map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean).join('\n\n');
+  }
+
   function stepText(prose) {
     let headingIndex = -1;
     prose.forEach((l, i) => { if (/^#{1,6}\s/.test(l)) headingIndex = i; });
     const title = headingIndex >= 0 ? prose[headingIndex].replace(/^#{1,6}\s+/, '').trim() : null;
-    const paragraphs = prose.slice(headingIndex + 1).join('\n').split(/\n\s*\n/)
-      .map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
-    return { title, text: paragraphs.join('\n\n') };
+    return { title, text: paragraphs(prose.slice(headingIndex + 1)) };
+  }
+
+  // The model's description: the text between the document's "# Title" and
+  // the next heading, before the first block. None without both headings.
+  function descriptionText(prose) {
+    const headings = [];
+    prose.forEach((l, i) => { if (/^#{1,6}\s/.test(l)) headings.push(i); });
+    if (headings.length < 2 || !/^#\s/.test(prose[headings[0]])) return null;
+    return paragraphs(prose.slice(headings[0] + 1, headings[1])) || null;
   }
 
   function parseNums(value, count) {
@@ -201,7 +213,7 @@
 
   /**
    * Parses a .plank.md document.
-   * Returns { meta, steps: [{ number, title, text, lines, line }], diagnostics }.
+   * Returns { meta, description, steps: [{ number, title, text, lines, line }], diagnostics }.
    */
   function parse(text) {
     const diagnostics = [];
@@ -216,7 +228,25 @@
         .filter(Boolean);
       return { number, title: title || `Step ${number}`, text: body, lines, line: block.firstLine - 1 };
     });
-    return { meta, steps, diagnostics };
+    const description = blocks.length ? descriptionText(blocks[0].prose) : null;
+    return { meta, description, steps, diagnostics };
+  }
+
+  /**
+   * A model shown in the language of one of its translations (see
+   * docs/proposals/translations.md): the geometry and the frontmatter come
+   * from `model`, the title, the description and the step texts from
+   * `translation`, matched by step number. Both are results of parse() or
+   * validate(). What the translation lacks stays in the model's language.
+   */
+  function translate(model, translation) {
+    const tr = translation.meta;
+    const meta = Object.assign({}, model.meta, { title: tr.title || model.meta.title, lang: tr.lang || model.meta.lang });
+    const steps = model.steps.map((s, i) => {
+      const t = translation.steps[i];
+      return t ? Object.assign({}, s, { title: t.title, text: t.text || s.text }) : s;
+    });
+    return Object.assign({}, model, { meta, description: translation.description || model.description, steps });
   }
 
   // -------------------------------------------------------------- expansion
@@ -381,6 +411,7 @@
     diagnostics.sort((a, b) => (a.line || 0) - (b.line || 0) || (a.plank || 0) - (b.plank || 0));
     return {
       meta: doc.meta,
+      description: doc.description,
       steps: doc.steps,
       planks,
       guides: rulers,
@@ -389,5 +420,5 @@
     };
   }
 
-  return { SPEC_VERSION, DEFAULT_PLANK, ORIENTATIONS, parse, expand, guides, validate };
+  return { SPEC_VERSION, DEFAULT_PLANK, ORIENTATIONS, parse, translate, expand, guides, validate };
 });

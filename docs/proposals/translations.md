@@ -86,6 +86,37 @@ translated step heading and text. A plank line (or a guide line) inside a
 translation block is an error (`E-translation-planks`): geometry lives in one
 place only.
 
+### The model description
+
+A translation also carries the model's description, which needs a rule of
+its own: it belongs to no step. The rule is structural, with no new key:
+
+> The **description** of a model is the text between the document's level 1
+> heading (`# Title`) and the next heading, before the first ` ```plank `
+> block. A model whose text before the first block has no level 1 heading
+> followed by another heading has no description.
+
+Every model of the gallery is already written this way:
+
+```markdown
+# Castle                        the document heading
+
+A square castle: four corner    the description
+towers, curtain walls...
+
+## Step 1: the first layer      the title of step 1
+```
+
+The text of step 1 does not change: it is still the text after the last
+heading before the block. A translation writes its description in the same
+place, and tools match it to the original's like a step. A translation
+without one shows the original's.
+
+A `description` key in the frontmatter was considered and left out: several
+paragraphs read badly in YAML, the text would exist twice (in the body and
+in the frontmatter), and the existing models would all have to change. A
+short one-line `summary` key, for gallery cards, can come later if needed.
+
 The original keeps its own `lang` (the language its text is written in). It
 never lists its translations: tools find them by name, so a translation can
 be added without touching the model.
@@ -95,8 +126,8 @@ be added without touching the model.
 - **Reading.** A tool that shows a model in language `L` reads
   `name.plank.md`, then looks for `name.L.plank.md` next to it. If it finds
   one, it takes the geometry and everything else from the original, and the
-  title, step titles and step texts from the translation, matched by step
-  number. If it does not, it falls back to the original text.
+  title, the description, the step titles and the step texts from the
+  translation, matched by step number. If it does not, it falls back to the original text.
 - **Validator.** A file with `translation-of` is validated as a translation:
   - `E-translation-source`: the original named by `translation-of` does not
     exist, or is itself a translation;
@@ -177,8 +208,14 @@ them:
 A fix to a plank in the original fixes both languages. A fourth step added to
 the original makes the validator report `W-translation-steps` on the French
 file. The v0.1 validator already reads the French file (3 steps, no planks,
-no diagnostics); the player bundle leaves translation files out, so the
-picker does not list it as a model.
+no diagnostics).
+
+The reference player already does this: `PlankMD.translate()` in
+`src/plankmd.js` merges a translation into a model, the bundle keeps
+translations apart from the models (`PLANKMD_TRANSLATIONS`), and the player
+and the gallery show the texts of the translation in the reader's language.
+The player also finds the translations of a model listed from GitHub by
+their names. The validator does not check translations yet.
 
 ## Keeping translations up to date
 
@@ -191,7 +228,7 @@ detected from the structure alone. Two options for v0.2, to decide:
    translator checks the steps of a modified model.
 2. **A source fingerprint**: an optional `source-hash` in the translation's
    frontmatter, the SHA-256 of the original's step titles and texts at the
-   time of translation. A validator recomputes it and warns
+   time of translation, description included. A validator recomputes it and warns
    (`W-translation-stale`) when the original's text has changed since.
 
 The second option is cheap to compute and lets a pipeline find stale
@@ -229,11 +266,6 @@ translations automatically. It is the recommended one.
 
 ## Open questions
 
-- **Model description.** The text between the model's `# Title` and its
-  first step is not part of any step today, so it has no translated
-  counterpart either. Either the spec defines it (a `description` key, or
-  "the text under the first heading"), and translations carry it the same
-  way, or it stays out of scope.
 - **Discovery outside a repository.** A model shared as a single file or a
   gist has no neighbours to look for. The player could accept a list of
   files, or a translation could be passed alongside the model in the URL.

@@ -56,9 +56,13 @@ let lang = I18N.detect();
 let T = I18N.strings(lang);
 I18N.translatePage(lang);
 document.title = T.galleryTitle;
-const cards = []; // [card, facts element, result, name]: their texts change with the language
-function label(a, facts, result, name) {
+const cards = []; // [card, title element, facts element, result, name]: their texts change with the language
+const translations = window.PLANKMD_TRANSLATIONS || {};
+function label(a, title, facts, result, name) {
   a.href = github ? playerLink(name) : I18N.sibling(`index.html#${name}`, lang);
+  // The title of the translation in the reader's language, when there is one.
+  const tr = !github && result.meta.lang !== lang && (translations[name] || {})[lang];
+  title.textContent = (tr && PlankMD.parse(tr).meta.title) || result.meta.title || name.split('/').pop();
   facts.textContent = [T.planks(result.planks.length), T.steps(result.steps.length)]
     .concat(result.meta.difficulty ? [T.difficulty(result.meta.difficulty)] : []).join(', ');
 }
@@ -118,10 +122,9 @@ function addCard(text, name) {
   img.src = thumbnail(result);
   const info = document.createElement('div');
   const title = document.createElement('b');
-  title.textContent = result.meta.title || name.split('/').pop();
   const facts = document.createElement('span');
-  cards.push([a, facts, result, name]);
-  label(a, facts, result, name);
+  cards.push([a, title, facts, result, name]);
+  label(a, title, facts, result, name);
   info.append(title, facts);
   a.append(img, info);
   grid.appendChild(a);

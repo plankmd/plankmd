@@ -43,6 +43,8 @@ html[lang="fr"] .label { width: 72px; }
 .count { min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 #title { font-size: 18px; font-weight: 650; margin: 2px 0 0; }
 #facts, #source { color: var(--muted); margin: 0; }
+#description { margin: 0; }
+#description:empty { display: none; }
 #source a { color: var(--accent); overflow-wrap: anywhere; }
 #step-title { font-weight: 600; margin: 0; }
 #step-text { margin: 0; white-space: pre-line; }
@@ -100,6 +102,7 @@ footer a { color: inherit; }
     </header>
     <div>
       <p id="title"></p>
+      <p id="description"></p>
       <p id="facts"></p>
       <p id="source" hidden><span id="source-label"></span> <a id="source-link" target="_blank" rel="noopener"></a></p>
       <label class="toggle"><input type="checkbox" id="balance-on"> <span data-i18n="checkBalance">Check balance</span> <span class="muted" data-i18n="slow">(slow on big models)</span></label>
@@ -447,9 +450,8 @@ function draw() {
   $('legend-fall').hidden = !falling;
   $('posen').textContent = `${state.planks.length ? n : 0}/${state.planks.length}`;
   $('stepn').textContent = `${state.steps.length ? step : 0}/${state.steps.length}`;
-  const s = state.steps[step - 1];
-  $('step-title').textContent = s ? s.title : '';
-  $('step-text').textContent = s ? s.text : '';
+  say('step-title', () => { const s = shown().steps[step - 1]; return s ? s.title : ''; });
+  say('step-text', () => { const s = shown().steps[step - 1]; return s ? s.text : ''; });
   say('step-guides', () => (guides.length ? T.guidesInStep(guides.length) : ''));
   const sb = balance && balance.steps.find((x) => x.step === step);
   const measuring = balance && !balance.complete && !balance.skipped;
@@ -475,14 +477,33 @@ function describe(meta, planks) {
   if (meta.difficulty) facts.push(T.difficulty(meta.difficulty));
   if (meta.author) facts.push(T.by(meta.author));
   if (meta.license) facts.push(meta.license);
+  const tr = shown().translation;
+  if (tr) facts.push(T.translatedBy(tr.meta.author, tr.meta.license !== meta.license ? tr.meta.license : null));
   return facts.join(', ');
+}
+
+// The translations of the model shown, { <lang>: text }: the files named
+// <name>.<lang>.plank.md next to it (docs/proposals/translations.md). The
+// geometry always comes from the editor, the texts from the translation in
+// the reader's language when there is one.
+let translations = {};
+let shownCache = null;
+function shown() {
+  const text = translations[lang];
+  if (!text || state.meta.lang === lang) return state;
+  if (!shownCache || shownCache.state !== state || shownCache.lang !== lang) {
+    const translation = PlankMD.parse(text);
+    shownCache = { state, lang, value: Object.assign(PlankMD.translate(state, translation), { translation }) };
+  }
+  return shownCache.value;
 }
 
 function run(keepPose) {
   const result = PlankMD.validate($('src').value);
   const wasAtEnd = state && pose() === state.planks.length;
   state = result;
-  say('title', () => result.meta.title || T.untitled);
+  say('title', () => shown().meta.title || T.untitled);
+  say('description', () => shown().description || '');
   say('facts', () => describe(result.meta, result.planks));
   $('step').max = Math.max(1, result.steps.length);
   $('pose').max = Math.max(1, result.planks.length);
@@ -648,15 +669,17 @@ function receiveBalance({ id, analysis, error, progress, partial, measured }) {
 }
 
 // `pick` is the value of the model in the picker, when it is not a sample.
-function load(text, name, pick) {
+// `found` are its translations, when they do not come with the samples.
+function load(text, name, pick, found) {
   loadError = null;
+  translations = found || (!pick && sampleTranslations[name]) || {};
   $('pick').value = pick || (name in samples ? name : '');
   if (!pick) showSource(null);
   $('src').value = text;
   state = null;
   run(false);
   frame();
-  setTitle(() => `${state.meta.title || name || T.model} | ${T.pageTitle}`);
+  setTitle(() => `${shown().meta.title || name || T.model} | ${T.pageTitle}`);
 }
 
 // -------------------------------------------------------------- drop test
@@ -752,6 +775,7 @@ $('reset').addEventListener('click', () => { draw(); });
 
 // ------------------------------------------------------------------ input
 const samples = window.PLANKMD_SAMPLES || {};
+const sampleTranslations = window.PLANKMD_TRANSLATIONS || {};
 for (const name of Object.keys(samples)) $('pick').add(new Option(name, name));
 $('pick').addEventListener('change', () => {
   const value = $('pick').value;
@@ -841,7 +865,7 @@ $('to-video').addEventListener('click', (e) => openWith('video.html', e));
 // folder, file or gist, straight from GitHub (see github.js): they are added
 // to the picker, and &file=<path> picks one. Nothing goes through a server.
 const GH = window.PlankMDGitHub;
-const github = { spec: null, files: new Map() };
+const github = { spec: null, files: new Map(), translations: new Map() };
 
 function showSource(file) {
   $('source').hidden = !file;
@@ -866,7 +890,11 @@ async function openGitHubFile(file) {
   $('source-link').textContent = '';
   let text;
   try { text = await GH.text(file); } catch (err) { githubError(err); return; }
-  load(text, file.name, `gh:${file.path}`);
+  const found = {};
+  await Promise.all(Object.entries(github.translations.get(file.path) || {}).map(async ([code, f]) => {
+    try { found[code] = await GH.text(f); } catch { /* the model still reads in its own language */ }
+  }));
+  load(text, file.name, `gh:${file.path}`, found);
   showSource(file);
   // Keep the address shareable: it names the model shown.
   const params = new URLSearchParams(location.search);
@@ -885,6 +913,7 @@ async function loadGitHub(address) {
   say('source-label', () => T.githubLoading(GH.label(github.spec)));
   let files;
   try { files = await GH.cachedList(github.spec); } catch (err) { githubError(err); return; }
+  ({ models: files, translations: github.translations } = GH.translations(files));
   const group = document.createElement('optgroup');
   group.label = T.githubGroup(GH.label(github.spec));
   for (const f of files) {
