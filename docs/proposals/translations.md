@@ -118,6 +118,68 @@ be added without touching the model.
   steps and no planks. Nothing breaks; they just show an empty construction,
   and the gallery should not list translation files as models.
 
+## Example
+
+The small square tower comes in English and French:
+
+```
+samples/square-tower.plank.md      the model: 25 planks and the English text
+samples/square-tower.fr.plank.md   its French translation: text only
+```
+
+[`square-tower.fr.plank.md`](../../samples/square-tower.fr.plank.md) has
+the same three steps as the original, each with an empty block:
+
+````markdown
+---
+plankmd: "0.2"
+translation-of: square-tower.plank.md
+lang: fr
+title: Petite tour carrée
+license: CC0-1.0
+---
+
+# Petite tour carrée
+
+Une tour creuse montée comme une cabane en rondins, avec un toit. 25 planchettes.
+
+## Étape 1 : la première couche
+
+Pose deux planchettes à plat et parallèles, pour former deux côtés d'un
+carré. [...]
+
+```plank
+```
+
+## Étape 2 : monter les murs
+
+[...]
+
+```plank
+```
+
+## Étape 3 : le toit
+
+Couvre la tour avec cinq planchettes posées côte à côte.
+
+```plank
+```
+````
+
+A player showing the tower in French reads both files and builds it from
+them:
+
+| Content | Comes from |
+|---|---|
+| the 25 planks, the guide, the roof color, `inventory`, `difficulty` | `square-tower.plank.md` |
+| the title, the description, the three step titles and texts | `square-tower.fr.plank.md` |
+
+A fix to a plank in the original fixes both languages. A fourth step added to
+the original makes the validator report `W-translation-steps` on the French
+file. The v0.1 validator already reads the French file (3 steps, no planks,
+no diagnostics); the player bundle leaves translation files out, so the
+picker does not list it as a model.
+
 ## Keeping translations up to date
 
 A translation matched by step number stays correct while the original keeps

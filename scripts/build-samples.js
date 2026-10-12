@@ -4,7 +4,8 @@
 // Bundles samples/*.plank.md and gallery/*.plank.md into player/samples.js,
 // so that the player works when opened straight from the disk (file:// pages
 // cannot fetch files). Gallery models are listed after the samples, under
-// "gallery/<name>".
+// "gallery/<name>". Translation files (a `translation-of` key, see
+// docs/proposals/translations.md) have no planks of their own and are left out.
 
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +21,10 @@ function buildSamples() {
   const names = list('samples')
     .sort((a, b) => ((ORDER.indexOf(a) + 1) || 99) - ((ORDER.indexOf(b) + 1) || 99) || a.localeCompare(b));
   const samples = {};
-  for (const name of names) samples[name] = fs.readFileSync(path.join(root, 'samples', `${name}.plank.md`), 'utf8');
+  for (const name of names) {
+    const text = fs.readFileSync(path.join(root, 'samples', `${name}.plank.md`), 'utf8');
+    if (!/^translation-of:/m.test(text)) samples[name] = text;
+  }
   for (const name of list('gallery').sort()) {
     samples[`gallery/${name}`] = fs.readFileSync(path.join(root, 'gallery', `${name}.plank.md`), 'utf8');
   }
