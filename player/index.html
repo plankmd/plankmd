@@ -63,9 +63,9 @@ html[lang="fr"] .label { width: 72px; }
 .code { font-family: ui-monospace, monospace; font-size: 12px; }
 #view { position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--scene); min-height: 320px; }
 #view canvas { display: block; }
-#drop { position: absolute; inset: 0; display: none; place-items: center; background: color-mix(in srgb, var(--scene) 85%, transparent);
+#drop-zone { position: absolute; inset: 0; display: none; place-items: center; background: color-mix(in srgb, var(--scene) 85%, transparent);
   border: 2px dashed var(--accent); border-radius: 8px; font-weight: 600; }
-#view.dragging #drop { display: grid; }
+#view.dragging #drop-zone { display: grid; }
 #hint { position: absolute; left: 10px; bottom: 8px; color: var(--muted); font-size: 12px; }
 #legend { position: absolute; right: 10px; top: 8px; left: auto; max-width: calc(100% - 20px); display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--muted);
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
@@ -119,7 +119,7 @@ footer a { color: inherit; }
     <textarea id="src" spellcheck="false" aria-label="PlankMD source" data-i18n-aria="source"></textarea>
     <footer><span data-i18n-html="footer">Drop a <span class="code">.plank.md</span> file on the scene, or edit the source. Drag to orbit, scroll to zoom.</span> <span class="links"><a href="booklet.html" id="to-booklet" target="_blank" data-i18n="booklet">Booklet (PDF)</a> <a href="video.html" id="to-video" target="_blank" data-i18n="video">Video</a> <a href="gallery.html" data-sibling="gallery.html" data-i18n="gallery">Gallery</a> <a href="../SPEC.md" data-i18n="spec">Spec</a> <a href="https://plankmd.org" data-i18n-href="site">plankmd.org</a></span></footer>
   </div>
-  <div id="view"><div id="drop" data-i18n="dropHere">Drop a .plank.md file</div><div id="hint"></div><div id="legend" hidden><span id="legend-guide"><span class="sw guide"></span><span data-i18n="legendGuide">guide, remove after use</span></span><span id="legend-problems"><span class="sw error"></span><span data-i18n="legendError">cannot be built</span> <span class="sw warning"></span><span data-i18n="legendFloating">rests on nothing</span></span><span id="legend-fall"><span class="sw fall"></span><span data-i18n="legendFall">would fall</span></span></div></div>
+  <div id="view"><div id="drop-zone" data-i18n="dropHere">Drop a .plank.md file</div><div id="hint"></div><div id="legend" hidden><span id="legend-guide"><span class="sw guide"></span><span data-i18n="legendGuide">guide, remove after use</span></span><span id="legend-problems"><span class="sw error"></span><span data-i18n="legendError">cannot be built</span> <span class="sw warning"></span><span data-i18n="legendFloating">rests on nothing</span></span><span id="legend-fall"><span class="sw fall"></span><span data-i18n="legendFall">would fall</span></span></div></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
