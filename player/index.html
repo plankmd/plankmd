@@ -103,6 +103,8 @@ footer a { color: inherit; }
       <p id="facts"></p>
       <p id="source" hidden><span id="source-label"></span> <a id="source-link" target="_blank" rel="noopener"></a></p>
       <label class="toggle"><input type="checkbox" id="balance-on"> <span data-i18n="checkBalance">Check balance</span> <span class="muted" data-i18n="slow">(slow on big models)</span></label>
+      <label class="toggle"><input type="checkbox" id="colours-on" checked> <span data-i18n="colours">Colours</span></label>
+      <label class="toggle"><input type="checkbox" id="grain-on" checked> <span data-i18n="grain">Wood grain</span></label>
       <p id="balance"></p>
     </div>
     <div class="row"><span class="label" data-i18n="step">Step</span><input id="step" type="range" min="1" max="1" value="1" aria-label="Step" data-i18n-aria="step"><span class="count" id="stepn"></span></div>
@@ -124,6 +126,7 @@ footer a { color: inherit; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="i18n.js"></script>
 <script src="github.js"></script>
+<script src="wood.js"></script>
 <script src="../src/plankmd.js"></script>
 <script src="../src/physics.js"></script>
 <script src="../src/drop.js"></script>
@@ -241,12 +244,34 @@ function cached(key, make) {
 }
 const EDGE_MATERIAL = new THREE.LineBasicMaterial({ color: 0x5a4630 });
 
+// How planks look: their own colours or all natural wood, and a pine grain
+// or plain colours. Both are remembered in this browser.
+const LOOK_KEY = 'plankmd.look';
+const look = { colours: true, grain: true };
+try { Object.assign(look, JSON.parse(localStorage.getItem(LOOK_KEY) || '{}')); } catch { /* storage unavailable */ }
+$('colours-on').checked = look.colours;
+$('grain-on').checked = look.grain;
+const colourOf = (p) => (look.colours ? p.color : PlankMDWood.WOOD);
+function plankMaterial(color) {
+  return new THREE.MeshLambertMaterial({ color, map: look.grain ? PlankMDWood.texture(THREE) : null });
+}
+const boxGeometry = (sx, sy, sz) => cached(`box:${sx},${sy},${sz}`, () => PlankMDWood.grainUVs(new THREE.BoxGeometry(sx, sz, sy)));
+for (const id of ['colours-on', 'grain-on']) {
+  $(id).addEventListener('change', () => {
+    look.colours = $('colours-on').checked;
+    look.grain = $('grain-on').checked;
+    try { localStorage.setItem(LOOK_KEY, JSON.stringify(look)); } catch { /* storage unavailable */ }
+    for (const key of [...shared.keys()]) if (key.startsWith('mat:')) shared.delete(key);
+    if (state && !sim) draw();
+  });
+}
+
 function meshFor(p, current, problem) {
   const [sx, sy, sz] = p.size;
-  const geometry = cached(`box:${sx},${sy},${sz}`, () => new THREE.BoxGeometry(sx, sz, sy));
+  const geometry = boxGeometry(sx, sy, sz);
   // Materials are cloned only when a mesh changes its own (highlight, simulation).
-  const material = current ? new THREE.MeshLambertMaterial({ color: p.color })
-    : cached(`mat:${p.color}`, () => new THREE.MeshLambertMaterial({ color: p.color }));
+  const color = colourOf(p);
+  const material = current ? plankMaterial(color) : cached(`mat:${color}`, () => plankMaterial(color));
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(p.center[0], p.center[2], -p.center[1]);
   mesh.rotation.y = (p.rotation * Math.PI) / 180;
@@ -311,7 +336,7 @@ function plumbLine(p) {
 function addInstanced(target, planks) {
   const groups = new Map();
   for (const p of planks) {
-    const key = `${p.size.join(',')}|${p.color}`;
+    const key = `${p.size.join(',')}|${colourOf(p)}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(p);
   }
@@ -320,8 +345,9 @@ function addInstanced(target, planks) {
   const v = new THREE.Vector3();
   for (const list of groups.values()) {
     const [sx, sy, sz] = list[0].size;
-    const geometry = cached(`box:${sx},${sy},${sz}`, () => new THREE.BoxGeometry(sx, sz, sy));
-    const material = cached(`mat:${list[0].color}`, () => new THREE.MeshLambertMaterial({ color: list[0].color }));
+    const geometry = boxGeometry(sx, sy, sz);
+    const color = colourOf(list[0]);
+    const material = cached(`mat:${color}`, () => plankMaterial(color));
     const edges = cached(`edges:${sx},${sy},${sz}`, () => new THREE.EdgesGeometry(geometry)).attributes.position;
     const mesh = new THREE.InstancedMesh(geometry, material, list.length);
     list.forEach((p, i) => {

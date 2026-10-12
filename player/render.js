@@ -1,8 +1,9 @@
 /*!
  * PlankMD offline renderer: still pictures of a model, plank by plank, for the
  * building video (video.html) and the printable booklet (booklet.html).
- * MIT License. Browser only: needs three.js r128 (window.THREE) and draws
- * into its own canvas (window.PlankMDRender).
+ * MIT License. Browser only: needs three.js r128 (window.THREE) and the pine
+ * texture of wood.js (window.PlankMDWood), and draws into its own canvas
+ * (window.PlankMDRender).
  */
 (function (root) {
   'use strict';
@@ -43,7 +44,7 @@
     const geometry = ([sx, sy, sz]) => {
       const key = `${sx},${sy},${sz}`;
       if (!geometries.has(key)) {
-        const g = new THREE.BoxGeometry(sx, sz, sy);
+        const g = root.PlankMDWood.grainUVs(new THREE.BoxGeometry(sx, sz, sy));
         geometries.set(key, g);
         edgeSets.set(key, new THREE.EdgesGeometry(g));
       }
@@ -55,7 +56,7 @@
       if (!materials.has(key)) {
         const c = new THREE.Color(color);
         if (kind === 'faded') c.lerp(bg, 0.55);
-        const m = new THREE.MeshLambertMaterial({ color: c });
+        const m = new THREE.MeshLambertMaterial({ color: c, map: root.PlankMDWood.texture(THREE) });
         if (kind === 'lit') m.emissive = new THREE.Color(0x6b3f00);
         materials.set(key, m);
       }

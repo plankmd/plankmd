@@ -39,6 +39,7 @@ body.render canvas { border-radius: 0; width: auto; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="../src/plankmd.js"></script>
 <script src="samples.js"></script>
+<script src="wood.js"></script>
 <script src="render.js"></script>
 <script>
 'use strict';
@@ -101,7 +102,7 @@ function frame(t) {
   const seg = segments.find((s) => t < s.end) || segments[segments.length - 1];
   const azimuth = 30 + (t / duration) * 300;
   // A little higher than the middle: the captions are at the bottom.
-  const view = { azimuth, elevation: 26, zoom: 1.05, shift: W > H ? 0.08 : 0.12 };
+  const view = { azimuth, elevation: 26, zoom: 0.95, shift: W > H ? 0.06 : 0.1 };
   const total = model.planks.length;
   if (seg.kind === 'intro' || seg.kind === 'outro') {
     view.upTo = total;

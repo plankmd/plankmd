@@ -46,6 +46,7 @@ a.card span { color: var(--muted); font-size: 13px; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="i18n.js"></script>
 <script src="github.js"></script>
+<script src="wood.js"></script>
 <script src="../src/plankmd.js"></script>
 <script src="samples.js"></script>
 <script>
@@ -86,8 +87,8 @@ function thumbnail(result) {
   const group = new THREE.Group();
   for (const p of result.planks) {
     const [sx, sy, sz] = p.size;
-    const g = new THREE.BoxGeometry(sx, sz, sy);
-    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: p.color }));
+    const g = PlankMDWood.grainUVs(new THREE.BoxGeometry(sx, sz, sy));
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: p.color, map: PlankMDWood.texture(THREE) }));
     // PlankMD (x, y, z) is (x, z, -y) in the scene.
     m.position.set(p.center[0], p.center[2], -p.center[1]);
     m.rotation.y = (p.rotation * Math.PI) / 180;
