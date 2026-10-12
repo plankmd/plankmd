@@ -47,7 +47,7 @@ img { display: block; width: 100%; height: auto; border-radius: 2mm; }
 </style>
 </head>
 <body>
-<div class="bar"><button id="print">Print or save as PDF</button><span id="status">Drawing the views…</span> <a href="index.html">Player</a></div>
+<div class="bar"><button id="print">Print or save as PDF</button><span id="status">Drawing the views…</span> <a id="to-player" href="index.html">Player</a></div>
 <div id="book"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="../src/plankmd.js"></script>
@@ -74,17 +74,19 @@ const T = FR ? {
   stepPlanks: (n) => `${n} planchette${n > 1 ? 's' : ''}`, view: (a, b) => `planchettes ${a} à ${b}`,
   guide: (n) => `${n} gabarit${n > 1 ? 's' : ''} (en bleu) : posez-les pour mesurer l'écart, puis retirez-les.`,
   made: 'Notice générée par PlankMD, un format ouvert pour les constructions en planchettes : plankmd.org',
-  print: 'Imprimer ou enregistrer en PDF', drawing: 'Dessin des vues…', ready: (n) => `${n} pages environ.`,
+  player: 'Lecteur', print: 'Imprimer ou enregistrer en PDF', drawing: 'Dessin des vues…', ready: (n) => `${n} pages environ.`,
 } : {
   translation: 'Translation', planks: 'Planks', steps: 'Steps', difficulty: 'Difficulty', inventory: 'You need', license: 'License', size: 'Size',
   stepPlanks: (n) => `${n} plank${n === 1 ? '' : 's'}`, view: (a, b) => `planks ${a} to ${b}`,
   guide: (n) => `${n} guide${n === 1 ? '' : 's'} (in blue): lay ${n === 1 ? 'it' : 'them'} to measure the gap, then take ${n === 1 ? 'it' : 'them'} away.`,
   made: 'Booklet made with PlankMD, an open format for plank constructions: plankmd.org',
-  print: 'Print or save as PDF', drawing: 'Drawing the views…', ready: (n) => `About ${n} pages.`,
+  player: 'Player', print: 'Print or save as PDF', drawing: 'Drawing the views…', ready: (n) => `About ${n} pages.`,
 };
 document.documentElement.lang = FR ? 'fr' : 'en';
 document.getElementById('print').textContent = T.print;
 document.getElementById('status').textContent = T.drawing;
+document.getElementById('to-player').textContent = T.player;
+document.getElementById('to-player').href = `index.html?lang=${LANG}`;
 
 const el = (tag, attrs = {}, ...children) => {
   const e = document.createElement(tag);

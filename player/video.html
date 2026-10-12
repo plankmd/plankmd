@@ -54,10 +54,27 @@ const params = new URLSearchParams(location.search);
 const LANG = params.get('lang') === 'fr' ? 'fr' : 'en';
 const TEXT = {
   en: { planks: (n) => `${n} plank${n === 1 ? '' : 's'}`, steps: (n) => `${n} step${n === 1 ? '' : 's'}`, difficulty: (d) => `difficulty ${d}/5`,
-    step: (k, n) => `Step ${k} of ${n}`, plank: (k, n) => `Plank ${k} / ${n}`, buildIt: 'Build it yourself', guide: 'Blue planks are guides: lay them to measure the gap, then take them away.' },
+    step: (k, n) => `Step ${k} of ${n}`, plank: (k, n) => `Plank ${k} / ${n}`, buildIt: 'Build it yourself', guide: 'Blue planks are guides: lay them to measure the gap, then take them away.',
+    // The page around the video.
+    pageTitle: 'PlankMD Video', play: 'Play', pause: 'Pause', record: 'Record a video', time: 'Time', format: 'Format', shorts: 'Shorts',
+    cannotRecord: 'This browser cannot record: use scripts/video.js.', recording: 'Recording…', saved: (f) => `Saved ${f}.`, player: 'Player',
+    about: 'A building video of a PlankMD model. Open it with the same addresses as the player: <code>video.html#corbel-bridge</code>, <code>video.html?src=&lt;url&gt;</code>. Record it here in real time, or render an MP4 frame by frame with <code>node scripts/video.js model.plank.md</code>.' },
   fr: { planks: (n) => `${n} planchette${n > 1 ? 's' : ''}`, steps: (n) => `${n} étape${n > 1 ? 's' : ''}`, difficulty: (d) => `difficulté ${d}/5`,
-    step: (k, n) => `Étape ${k} sur ${n}`, plank: (k, n) => `Planchette ${k} / ${n}`, buildIt: 'À vous de le construire', guide: "Les planchettes bleues sont des gabarits : posez-les pour mesurer l'écart, puis retirez-les." },
+    step: (k, n) => `Étape ${k} sur ${n}`, plank: (k, n) => `Planchette ${k} / ${n}`, buildIt: 'À vous de le construire', guide: "Les planchettes bleues sont des gabarits : posez-les pour mesurer l'écart, puis retirez-les.",
+    pageTitle: 'Vidéo PlankMD', play: 'Lecture', pause: 'Pause', record: 'Enregistrer une vidéo', time: 'Temps', format: 'Format', shorts: 'Shorts',
+    cannotRecord: "Ce navigateur ne sait pas enregistrer : utilisez scripts/video.js.", recording: 'Enregistrement…', saved: (f) => `${f} enregistrée.`, player: 'Lecteur',
+    about: "Une vidéo de construction d'un modèle PlankMD. Elle s'ouvre avec les mêmes adresses que le lecteur : <code>video.html#corbel-bridge</code>, <code>video.html?src=&lt;url&gt;</code>. Enregistrez-la ici en temps réel, ou produisez un MP4 image par image avec <code>node scripts/video.js modele.plank.md --lang fr</code>." },
 }[LANG];
+
+// The page in its language: the texts on the video itself are drawn by frame().
+document.documentElement.lang = LANG;
+document.title = TEXT.pageTitle;
+document.getElementById('play').textContent = TEXT.play;
+document.getElementById('seek').setAttribute('aria-label', TEXT.time);
+document.getElementById('format').setAttribute('aria-label', TEXT.format);
+document.querySelector('#format option[value=vertical]').textContent = `1080 × 1920 (${TEXT.shorts})`;
+document.getElementById('record').textContent = TEXT.record;
+document.getElementById('about').innerHTML = `${TEXT.about} <a href="index.html?lang=${LANG}">${TEXT.player}</a>`;
 
 const FORMATS = { landscape: [1920, 1080], vertical: [1080, 1920] };
 const FPS = 30;
@@ -283,27 +300,27 @@ function show(t) {
 function tick(now) {
   if (!playing) return;
   show((now - t0) / 1000);
-  if (at >= timeline.duration) { playing = false; document.getElementById('play').textContent = 'Play'; if (recorder) recorder.stop(); return; }
+  if (at >= timeline.duration) { playing = false; document.getElementById('play').textContent = TEXT.play; if (recorder) recorder.stop(); return; }
   requestAnimationFrame(tick);
 }
 function play(from) {
   playing = true;
   t0 = performance.now() - from * 1000;
-  document.getElementById('play').textContent = 'Pause';
+  document.getElementById('play').textContent = TEXT.pause;
   requestAnimationFrame(tick);
 }
 document.getElementById('play').addEventListener('click', () => {
-  if (playing) { playing = false; document.getElementById('play').textContent = 'Play'; return; }
+  if (playing) { playing = false; document.getElementById('play').textContent = TEXT.play; return; }
   play(at >= timeline.duration ? 0 : at);
 });
-seek.addEventListener('input', () => { playing = false; document.getElementById('play').textContent = 'Play'; show((seek.value / 1000) * timeline.duration); });
+seek.addEventListener('input', () => { playing = false; document.getElementById('play').textContent = TEXT.play; show((seek.value / 1000) * timeline.duration); });
 document.getElementById('format').addEventListener('change', (e) => { setFormat(e.target.value); show(at); });
 
 // Records the canvas in real time: MP4 where the browser can, WebM otherwise.
 document.getElementById('record').addEventListener('click', () => {
   if (recorder) return;
   const type = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
-  if (!type) { document.getElementById('status').textContent = 'This browser cannot record: use scripts/video.js.'; return; }
+  if (!type) { document.getElementById('status').textContent = TEXT.cannotRecord; return; }
   const chunks = [];
   recorder = new MediaRecorder(out.captureStream(FPS), { mimeType: type, videoBitsPerSecond: 12e6 });
   recorder.ondataavailable = (e) => chunks.push(e.data);
@@ -313,10 +330,10 @@ document.getElementById('record').addEventListener('click', () => {
     a.download = `${(model.meta.title || 'plankmd').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
     a.click();
     recorder = null;
-    document.getElementById('status').textContent = `Saved ${a.download}.`;
+    document.getElementById('status').textContent = TEXT.saved(a.download);
   };
   recorder.start();
-  document.getElementById('status').textContent = 'Recording…';
+  document.getElementById('status').textContent = TEXT.recording;
   play(0);
 });
 
