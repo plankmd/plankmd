@@ -29,8 +29,11 @@ Pour ouvrir votre propre modèle, déposez-le sur le lecteur, ou faites un lien 
 `https://plankmd.org/player/?lang=fr&src=<url du fichier .plank.md>`. Le fichier doit
 être servi avec CORS autorisé, comme le sont les fichiers bruts de GitHub.
 
-## Proposer un modèle
+## Partager vos propres modèles
 
-Les nouveaux modèles sont les bienvenus en pull request, sous CC0. Voir
-[Contributing](https://github.com/plankmd/plankmd/blob/main/CONTRIBUTING.md)
-(en anglais).
+La galerie est une sélection fixe. Vos modèles vivent dans votre propre
+dépôt, sous la licence de votre choix : mettez les fichiers `.plank.md` dans
+un dépôt GitHub public et partagez
+`https://plankmd.org/p?repo=<votre dépôt>`. Il les ouvre en galerie et dans
+le lecteur, directement depuis GitHub. Voir
+[Utiliser](/fr/use#partager-vos-modeles-depuis-github).

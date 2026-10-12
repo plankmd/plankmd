@@ -2,9 +2,16 @@
 
 Issues and pull requests are welcome, in particular:
 
-- **Models.** New samples go in `samples/`, under CC0 (`license: CC0-1.0` in
-  the frontmatter), and must pass `npm run validate`. Build them for real
-  first: the validator does not check that a model stands up.
+- **Models.** Samples in `samples/` show the features of the format: a new
+  one is welcome when it shows something the others do not, under CC0
+  (`license: CC0-1.0` in the frontmatter), and must pass `npm run validate`.
+  Build them for real first: the validator does not check that a model
+  stands up.
+- **The gallery** (`gallery/`) is a closed selection: it only grows by
+  decision of the maintainers. Your own models live in your own repository,
+  under the license you choose: put the `.plank.md` files in a public GitHub
+  repository and share `https://plankmd.org/p?repo=<your repository>`, which
+  opens them in the gallery and the player.
 - **Spec changes.** Open an issue first. Explain the construction you could
   not describe, and show the lines you would like to write. `SPEC.md` is the
   reference; the French translation on the website (`site/fr/spec.md`) is
