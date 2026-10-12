@@ -196,3 +196,48 @@ test('a translation gives the texts, the model everything else', () => {
   assert.equal(short.steps[1].title, model.steps[1].title);
   assert.equal(short.description, model.description);
 });
+
+test('a translation holds only text', () => {
+  const tr = (frontmatter, body) => `---\nplankmd: "0.2"\ntitle: T\n${frontmatter}---\n\n${body}`;
+  const empty = '## Un\n\n```plank\n```\n\n## Deux\n\n```plank\n```\n';
+  assert.deepEqual(codes(validate(tr('translation-of: a.plank.md\nlang: fr\n', empty))), []);
+  const r = validate(tr('translation-of: a.plank.md\ninventory: 30\npalette:\n  roof: red\n', '## Un\n\n```plank\nflat-x 0 0 0\nguide flat-x 0 3 0\n```\n'));
+  assert.deepEqual(codes(r).filter((c) => c.includes('translation')).sort(), ['E-translation-planks', 'W-translation-ignored-key', 'W-translation-ignored-key', 'W-translation-lang']);
+  const planks = r.diagnostics.find((d) => d.code === 'E-translation-planks');
+  assert.equal(planks.step, 1);
+  assert.match(planks.message, /^step 1 of a translation has 2 plank lines/);
+  assert.deepEqual(codes(validate(tr('translation-of:\nlang: fr\n', empty))), ['E-translation-source']);
+  // A model is validated as before: the translation checks need "translation-of".
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0'], '---\nplankmd: "0.1"\ntitle: T\ninventory: 3\n---\n'))), []);
+});
+
+test('a translation is checked against its original', () => {
+  const tr = (lang, body) => `---\nplankmd: "0.2"\ntitle: T\ntranslation-of: a.plank.md\nlang: ${lang}\n---\n\n${body}`;
+  const original = '---\nplankmd: "0.1"\ntitle: A\nlang: en\n---\n\n## One\n\n```plank\nflat-x 0 0 0\n```\n\n## Two\n\n```plank\nflat-x 0 0 1\n```\n';
+  const two = '## Un\n\n```plank\n```\n\n## Deux\n\n```plank\n```\n';
+  assert.deepEqual(codes(validate(tr('fr', two), { original })), []);
+  assert.deepEqual(codes(validate(tr('fr', two))), [], 'no original given: only the file itself is checked');
+  const short = validate(tr('fr', '## Un\n\n```plank\n```\n'), { original });
+  assert.deepEqual(codes(short), ['W-translation-steps']);
+  assert.equal(short.diagnostics[0].message, '1 step, but the original "a.plank.md" has 2');
+  assert.deepEqual(codes(validate(tr('en', two), { original })), ['W-translation-lang']);
+  assert.deepEqual(codes(validate(tr('fr', two), { original: null })), ['E-translation-source']);
+  assert.deepEqual(codes(validate(tr('fr', two), { original: tr('de', two) })), ['E-translation-source']);
+  assert.equal(validate(tr('fr', two), { original: null }).valid, false);
+});
+
+test('the command line checks a translation against the file it names', () => {
+  const { execFileSync } = require('child_process');
+  const bin = path.join(__dirname, '..', 'bin', 'plankmd.js');
+  const out = JSON.parse(execFileSync(process.execPath, [bin, 'validate', '--json', path.join(__dirname, '..', 'samples', 'square-tower.fr.plank.md')], { encoding: 'utf8' }));
+  assert.deepEqual(out[0].diagnostics, []);
+  const os = require('os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'plankmd-'));
+  const file = path.join(dir, 'lost.fr.plank.md');
+  fs.writeFileSync(file, '---\nplankmd: "0.2"\ntitle: T\ntranslation-of: lost.plank.md\nlang: fr\n---\n\n## Un\n\n```plank\n```\n');
+  let failed = null;
+  try { execFileSync(process.execPath, [bin, 'validate', '--json', file], { encoding: 'utf8' }); } catch (e) { failed = e; }
+  assert.ok(failed, 'exit code 1');
+  assert.deepEqual(JSON.parse(failed.stdout)[0].diagnostics.map((d) => d.code), ['E-translation-source']);
+  fs.rmSync(dir, { recursive: true });
+});

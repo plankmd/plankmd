@@ -47,7 +47,13 @@ async function main(argv) {
     let text;
     try { text = fs.readFileSync(file, 'utf8'); }
     catch (e) { return { file, error: e.message }; }
-    return Object.assign({ file }, PlankMD.validate(text));
+    // A translation is also checked against the original it names.
+    const of = PlankMD.parse(text).meta['translation-of'];
+    const options = {};
+    if (command === 'validate' && typeof of === 'string' && of) {
+      try { options.original = fs.readFileSync(path.resolve(path.dirname(file), of), 'utf8'); } catch { options.original = null; }
+    }
+    return Object.assign({ file }, PlankMD.validate(text, options));
   });
   if (command === 'validate' && flags.has('--physics')) {
     let loaded;

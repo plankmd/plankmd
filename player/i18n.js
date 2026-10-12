@@ -308,6 +308,29 @@
       [/^(\d+) planks, but the inventory is (\d+)$/, (m) => `${m[1]} planchettes, mais l'inventaire n'en compte que ${m[2]}`],
       () => "Le modèle demande plus de planchettes que l'inventaire n'en compte",
     ],
+    'E-translation-source': [
+      [/^The "translation-of" key names no file$/, () => `La clé ${q('translation-of')} ne nomme aucun fichier`],
+      [/^The original "(.*)" does not exist$/, (m) => `L'original ${q(m[1])} n'existe pas`],
+      [/^The original "(.*)" is itself a translation$/, (m) => `L'original ${q(m[1])} est lui-même une traduction`],
+      () => "L'original de cette traduction est introuvable",
+    ],
+    'E-translation-planks': [
+      [/^step (\d+) of a translation has (\d+) plank lines?: /, (m) => `L'étape ${m[1]} d'une traduction a ${m[2]} ligne${m[2] === '1' ? '' : 's'} de planchettes : la géométrie vient de l'original`],
+      (d) => `L'étape ${d.step} d'une traduction a des lignes de planchettes : la géométrie vient de l'original`,
+    ],
+    'W-translation-steps': [
+      [/^(\d+) steps?, but the original "(.*)" has (\d+)$/, (m) => `${m[1]} étape${m[1] === '1' ? '' : 's'}, mais l'original ${q(m[2])} en a ${m[3]}`],
+      () => "La traduction n'a pas le même nombre d'étapes que l'original",
+    ],
+    'W-translation-lang': [
+      [/^A translation has no "lang"$/, () => `La traduction n'a pas de ${q('lang')}`],
+      [/^"lang" is "(.*)", the language of the original$/, (m) => `${q('lang')} vaut ${q(m[1])}, la langue de l'original`],
+      () => "La langue de la traduction manque, ou c'est celle de l'original",
+    ],
+    'W-translation-ignored-key': [
+      [/^"(.*)" is ignored in a translation: /, (m) => `${q(m[1])} est ignoré dans une traduction : il vient de l'original`],
+      () => "Cette clé est ignorée dans une traduction : elle vient de l'original",
+    ],
     'I-unstable': [
       // Built from the fields: the planks that give way are all in `failing`.
       (d) => {

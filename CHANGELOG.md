@@ -17,6 +17,9 @@
   to it. `parse()` returns the model's `description`, `translate()` merges a
   translation into a model, and the player and the gallery show the
   translation in the reader's language (`samples/square-tower.fr.plank.md`).
+  `plankmd validate` checks a translation against the original it names
+  (`E-translation-source`, `E-translation-planks`, `W-translation-steps`,
+  `W-translation-lang`, `W-translation-ignored-key`).
 
 ## 0.1.0 (draft), 2026-10-11
 

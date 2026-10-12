@@ -162,6 +162,41 @@
     return paragraphs(prose.slice(headings[0] + 1, headings[1])) || null;
   }
 
+  // A translation (docs/proposals/translations.md) holds only text: its
+  // geometry and the keys that describe the building come from the original.
+  const ORIGINAL_ONLY = ['plank', 'unit_mm', 'inventory', 'difficulty', 'palette'];
+
+  function checkTranslation(meta, steps, diagnostics) {
+    const of = meta['translation-of'];
+    if (typeof of !== 'string' || !of) diag(diagnostics, 'E-translation-source', 'The "translation-of" key names no file');
+    if (!meta.lang) diag(diagnostics, 'W-translation-lang', 'A translation has no "lang"');
+    for (const key of ORIGINAL_ONLY) {
+      if (meta[key] !== undefined) diag(diagnostics, 'W-translation-ignored-key', `"${key}" is ignored in a translation: it comes from the original`);
+    }
+    for (const step of steps) {
+      const n = step.lines.length;
+      if (n) {
+        diag(diagnostics, 'E-translation-planks', `step ${step.number} of a translation has ${n} plank line${n === 1 ? '' : 's'}: the geometry comes from the original`,
+          { step: step.number, line: step.lines[0].line });
+      }
+    }
+  }
+
+  // The checks of a translation against its original: `original` is the
+  // original's text, or null when the file named by "translation-of" is missing.
+  function compareTranslation(doc, original, diagnostics) {
+    const of = doc.meta['translation-of'];
+    if (original === null) { diag(diagnostics, 'E-translation-source', `The original "${of}" does not exist`); return; }
+    const source = parse(original);
+    if (source.meta['translation-of'] !== undefined) { diag(diagnostics, 'E-translation-source', `The original "${of}" is itself a translation`); return; }
+    if (doc.steps.length !== source.steps.length) {
+      diag(diagnostics, 'W-translation-steps', `${doc.steps.length} step${doc.steps.length === 1 ? '' : 's'}, but the original "${of}" has ${source.steps.length}`);
+    }
+    if (doc.meta.lang && doc.meta.lang === source.meta.lang) {
+      diag(diagnostics, 'W-translation-lang', `"lang" is "${doc.meta.lang}", the language of the original`);
+    }
+  }
+
   function parseNums(value, count) {
     const parts = String(value).split(',');
     if (parts.length !== count || !parts.every((p) => NUM.test(p.trim()))) return null;
@@ -228,6 +263,7 @@
         .filter(Boolean);
       return { number, title: title || `Step ${number}`, text: body, lines, line: block.firstLine - 1 };
     });
+    if (rawMeta['translation-of'] !== undefined) checkTranslation(rawMeta, steps, diagnostics);
     const description = blocks.length ? descriptionText(blocks[0].prose) : null;
     return { meta, description, steps, diagnostics };
   }
@@ -348,9 +384,15 @@
    * soon as there is one error. Diagnostics carry `line` (1-based, in the
    * file), and `plank` / `step` when they concern a plank.
    */
-  function validate(text) {
+  /**
+   * Validates a .plank.md document. For a translation, `options.original` is
+   * the text of the file its "translation-of" names (null if there is none):
+   * given, the translation is also checked against it.
+   */
+  function validate(text, options = {}) {
     const doc = parse(text);
     const diagnostics = doc.diagnostics;
+    if (doc.meta['translation-of'] !== undefined && options.original !== undefined) compareTranslation(doc, options.original, diagnostics);
     const planks = expand(doc);
     const ids = new Map();
     const placed = [];

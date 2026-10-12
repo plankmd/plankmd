@@ -129,8 +129,8 @@ be added without touching the model.
   title, the description, the step titles and the step texts from the
   translation, matched by step number. If it does not, it falls back to the original text.
 - **Validator.** A file with `translation-of` is validated as a translation:
-  - `E-translation-source`: the original named by `translation-of` does not
-    exist, or is itself a translation;
+  - `E-translation-source`: `translation-of` names no file, or the original
+    it names does not exist, or is itself a translation;
   - `E-translation-planks`: a translation block contains a plank line;
   - `W-translation-steps`: the translation does not have the same number of
     steps as the original;
@@ -215,7 +215,11 @@ The reference player already does this: `PlankMD.translate()` in
 translations apart from the models (`PLANKMD_TRANSLATIONS`), and the player
 and the gallery show the texts of the translation in the reader's language.
 The player also finds the translations of a model listed from GitHub by
-their names. The validator does not check translations yet.
+their names. The reference validator checks translations: `validate(text,
+{ original })` takes the original's text (null when it is missing), and
+`plankmd validate` reads the file named by `translation-of` itself.
+`source-hash` is not implemented: the choice between the two options below
+is still open.
 
 ## Keeping translations up to date
 
