@@ -162,6 +162,58 @@
     return paragraphs(prose.slice(headings[0] + 1, headings[1])) || null;
   }
 
+  // SHA-256 of a string's UTF-8 bytes, as lowercase hex. Synchronous, for
+  // validate(): the browser's crypto.subtle only answers with a promise.
+  const ror = (x, n) => (x >>> n) | (x << (32 - n));
+  const SHA_K = (() => {
+    const k = [];
+    for (let n = 2; k.length < 64; n++) {
+      let prime = true;
+      for (let d = 2; d * d <= n; d++) if (n % d === 0) { prime = false; break; }
+      if (prime) k.push((Math.cbrt(n) % 1) * 0x100000000 >>> 0);
+    }
+    return k;
+  })();
+  function sha256(text) {
+    const bytes = new TextEncoder().encode(text);
+    const n = bytes.length;
+    const words = new Uint32Array(((n + 9 + 63) >> 6) << 4);
+    for (let i = 0; i < n; i++) words[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
+    words[n >> 2] |= 0x80 << (24 - (n % 4) * 8);
+    words[words.length - 2] = Math.floor(n / 0x20000000);
+    words[words.length - 1] = (n * 8) >>> 0;
+    let h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const w = new Uint32Array(64);
+    for (let i = 0; i < words.length; i += 16) {
+      for (let t = 0; t < 16; t++) w[t] = words[i + t];
+      for (let t = 16; t < 64; t++) {
+        const s0 = ror(w[t - 15], 7) ^ ror(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+        const s1 = ror(w[t - 2], 17) ^ ror(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+      }
+      let [a, b, c, d, e, f, g, k] = h;
+      for (let t = 0; t < 64; t++) {
+        const t1 = (k + (ror(e, 6) ^ ror(e, 11) ^ ror(e, 25)) + ((e & f) ^ (~e & g)) + SHA_K[t] + w[t]) | 0;
+        const t2 = ((ror(a, 2) ^ ror(a, 13) ^ ror(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+        k = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      h = [a, b, c, d, e, f, g, k].map((x, j) => (x + h[j]) | 0);
+    }
+    return h.map((x) => (x >>> 0).toString(16).padStart(8, '0')).join('');
+  }
+
+  /**
+   * The fingerprint of a model's text, for the "source-hash" of its
+   * translations: the SHA-256 of its title, its description, then each
+   * step's title and text, as parse() reads them, each followed by a line
+   * feed. `doc` is a result of parse() or validate().
+   */
+  function sourceHash(doc) {
+    const texts = [doc.meta.title || '', doc.description || ''];
+    for (const step of doc.steps) texts.push(step.title, step.text);
+    return sha256(texts.map((t) => `${t}\n`).join(''));
+  }
+
   // A translation (docs/proposals/translations.md) holds only text: its
   // geometry and the keys that describe the building come from the original.
   const ORIGINAL_ONLY = ['plank', 'unit_mm', 'inventory', 'difficulty', 'palette'];
@@ -194,6 +246,10 @@
     }
     if (doc.meta.lang && doc.meta.lang === source.meta.lang) {
       diag(diagnostics, 'W-translation-lang', `"lang" is "${doc.meta.lang}", the language of the original`);
+    }
+    const hash = doc.meta['source-hash'];
+    if (hash !== undefined && hash !== sourceHash(source)) {
+      diag(diagnostics, 'W-translation-stale', `The text of the original "${of}" has changed since this translation: check it, then set "source-hash" to ${sourceHash(source)}`);
     }
   }
 
@@ -462,5 +518,5 @@
     };
   }
 
-  return { SPEC_VERSION, DEFAULT_PLANK, ORIENTATIONS, parse, translate, expand, guides, validate };
+  return { SPEC_VERSION, DEFAULT_PLANK, ORIENTATIONS, parse, translate, sourceHash, sha256, expand, guides, validate };
 });

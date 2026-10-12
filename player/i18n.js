@@ -331,6 +331,11 @@
       [/^"(.*)" is ignored in a translation: /, (m) => `${q(m[1])} est ignoré dans une traduction : il vient de l'original`],
       () => "Cette clé est ignorée dans une traduction : elle vient de l'original",
     ],
+    'W-translation-stale': [
+      [/^The text of the original "(.*)" has changed since this translation: check it, then set "source-hash" to (\S+)$/,
+        (m) => `Le texte de l'original ${q(m[1])} a changé depuis cette traduction : vérifiez-la, puis mettez ${q('source-hash')} à ${m[2]}`],
+      () => "Le texte de l'original a changé depuis cette traduction",
+    ],
     'I-unstable': [
       // Built from the fields: the planks that give way are all in `failing`.
       (d) => {

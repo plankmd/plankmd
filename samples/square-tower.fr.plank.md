@@ -2,6 +2,7 @@
 plankmd: "0.2"
 translation-of: square-tower.plank.md
 lang: fr
+source-hash: ba10fd6b80a8246a71be084ddd35ffb1397ffe147293a28ca29ff195e2778ec6
 title: Petite tour carrée
 license: CC0-1.0
 ---

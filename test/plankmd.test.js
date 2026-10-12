@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { parse, translate, expand, validate } = require('../src/plankmd.js');
+const { parse, translate, sourceHash, sha256, expand, validate } = require('../src/plankmd.js');
 
 const block = (lines, frontmatter = '') => `${frontmatter}\`\`\`plank\n${lines.join('\n')}\n\`\`\`\n`;
 const codes = (r) => r.diagnostics.map((d) => d.code);
@@ -240,4 +240,35 @@ test('the command line checks a translation against the file it names', () => {
   assert.ok(failed, 'exit code 1');
   assert.deepEqual(JSON.parse(failed.stdout)[0].diagnostics.map((d) => d.code), ['E-translation-source']);
   fs.rmSync(dir, { recursive: true });
+});
+
+test('sha256 matches the standard one', () => {
+  const crypto = require('crypto');
+  for (const text of ['', 'abc', 'é'.repeat(55), 'x'.repeat(64), 'Étape 1 : 中文 😀\n'.repeat(20)]) {
+    assert.equal(sha256(text), crypto.createHash('sha256').update(text, 'utf8').digest('hex'), JSON.stringify(text));
+  }
+});
+
+test('the source hash of a translation flags a change in the original text', () => {
+  const original = '---\ntitle: A\nlang: en\n---\n\n# A\n\nAbout A.\n\n## One\n\nLay it.\n\n```plank\nflat-x 0 0 0\n```\n';
+  const hash = sourceHash(parse(original));
+  assert.equal(hash, sha256('A\nAbout A.\nOne\nLay it.\n'));
+  const tr = (h) => `---\nplankmd: "0.2"\ntitle: T\ntranslation-of: a.plank.md\nlang: fr\nsource-hash: ${h}\n---\n\n## Un\n\n\`\`\`plank\n\`\`\`\n`;
+  assert.deepEqual(codes(validate(tr(hash), { original })), []);
+  // The geometry is not part of the fingerprint, the text is.
+  assert.deepEqual(codes(validate(tr(hash), { original: original.replace('flat-x 0 0 0', 'flat-y 0 0 0') })), []);
+  for (const changed of [original.replace('Lay it.', 'Lay it flat.'), original.replace('About A.', 'About B.'), original.replace('title: A', 'title: B')]) {
+    const r = validate(tr(hash), { original: changed });
+    assert.deepEqual(codes(r), ['W-translation-stale']);
+    assert.ok(r.diagnostics[0].message.endsWith(sourceHash(parse(changed))));
+  }
+  assert.deepEqual(codes(validate(tr('nope'), { original })), ['W-translation-stale']);
+});
+
+test('the command line prints the source hash of a model', () => {
+  const { execFileSync } = require('child_process');
+  const file = path.join(__dirname, '..', 'samples', 'square-tower.plank.md');
+  const out = execFileSync(process.execPath, [path.join(__dirname, '..', 'bin', 'plankmd.js'), 'source-hash', file], { encoding: 'utf8' });
+  assert.equal(out.trim(), sourceHash(parse(fs.readFileSync(file, 'utf8'))));
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'samples', 'square-tower.fr.plank.md'), 'utf8'), new RegExp(`^source-hash: ${out.trim()}$`, 'm'));
 });

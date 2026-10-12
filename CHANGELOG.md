@@ -19,7 +19,9 @@
   translation in the reader's language (`samples/square-tower.fr.plank.md`).
   `plankmd validate` checks a translation against the original it names
   (`E-translation-source`, `E-translation-planks`, `W-translation-steps`,
-  `W-translation-lang`, `W-translation-ignored-key`).
+  `W-translation-lang`, `W-translation-ignored-key`), and its `source-hash`
+  (`plankmd source-hash <model>`) flags a change in the original's text
+  (`W-translation-stale`).
 
 ## 0.1.0 (draft), 2026-10-11
 

@@ -77,6 +77,7 @@ Frontmatter of a translation:
 | `translation-of` | yes | Path of the original model, relative to this file. Its presence is what makes the file a translation. |
 | `lang` | yes | BCP 47 tag of the translation. |
 | `title` | yes | Translated title. |
+| `source-hash` | no | Fingerprint of the original's text at the time of translation (see [Keeping translations up to date](#keeping-translations-up-to-date)). |
 | `author`, `license` | no | The translation's own author and license, which may differ from the model's. |
 | `plank`, `unit_mm`, `inventory`, `difficulty`, `palette` | no | Ignored: they always come from the original. A validator warns if they are present. |
 
@@ -136,7 +137,9 @@ be added without touching the model.
     steps as the original;
   - `W-translation-lang`: `lang` is missing, or equal to the original's;
   - `W-translation-ignored-key`: a key that only the original may set
-    (`plank`, `inventory`...) is present.
+    (`plank`, `inventory`...) is present;
+  - `W-translation-stale`: `source-hash` is set and no longer matches the
+    original's text.
 
   A model is validated exactly as before; the validator MAY also check every
   translation found next to it.
@@ -166,6 +169,7 @@ the same three steps as the original, each with an empty block:
 plankmd: "0.2"
 translation-of: square-tower.plank.md
 lang: fr
+source-hash: ba10fd6b80a8246a71be084ddd35ffb1397ffe147293a28ca29ff195e2778ec6
 title: Petite tour carrée
 license: CC0-1.0
 ---
@@ -217,26 +221,40 @@ and the gallery show the texts of the translation in the reader's language.
 The player also finds the translations of a model listed from GitHub by
 their names. The reference validator checks translations: `validate(text,
 { original })` takes the original's text (null when it is missing), and
-`plankmd validate` reads the file named by `translation-of` itself.
-`source-hash` is not implemented: the choice between the two options below
-is still open.
+`plankmd validate` reads the file named by `translation-of` itself, and
+`plankmd source-hash` prints the fingerprint of a model.
 
 ## Keeping translations up to date
 
 A translation matched by step number stays correct while the original keeps
 its steps. When a step is added or removed, `W-translation-steps` flags the
 translation. A step whose text changed but whose number did not cannot be
-detected from the structure alone. Two options for v0.2, to decide:
+detected from the structure alone: a translation records the original's text
+it was made from with a fingerprint.
 
-1. **Nothing more**: the repository history shows what changed, and a
-   translator checks the steps of a modified model.
-2. **A source fingerprint**: an optional `source-hash` in the translation's
-   frontmatter, the SHA-256 of the original's step titles and texts at the
-   time of translation, description included. A validator recomputes it and warns
-   (`W-translation-stale`) when the original's text has changed since.
+`source-hash`, optional in a translation's frontmatter, is the SHA-256, in
+lowercase hexadecimal, of the UTF-8 encoding of the original's texts, each
+followed by a line feed (U+000A), in this order:
 
-The second option is cheap to compute and lets a pipeline find stale
-translations automatically. It is the recommended one.
+1. the title (the `title` key; empty if there is none);
+2. the description (empty if there is none);
+3. for each step, its title, then its text.
+
+The texts are the ones a parser reads: a step without a heading has the
+title `Step <n>`, and the text of a step or of the description is its
+paragraphs, each paragraph's lines joined by a space, the paragraphs joined
+by a blank line. The geometry is not part of the fingerprint: a fix to a
+plank line leaves every translation up to date.
+
+A validator recomputes it and warns (`W-translation-stale`) when the
+original's text has changed since, with the new value in the message: the
+translator checks the steps, then updates `source-hash`. `plankmd
+source-hash <model>` prints it, so a pipeline can set it when a translation
+is made and find stale ones automatically.
+
+A translation without `source-hash` is never reported stale. The other
+option considered was nothing more than the repository history: it leaves
+finding the stale translations to a person.
 
 ## Recommendations
 
