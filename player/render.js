@@ -63,7 +63,7 @@
     };
 
     let planks = [], meshes = [], guides = [];
-    const bounds = { center: new THREE.Vector3(), radius: 10, size: new THREE.Vector3() };
+    const bounds = { center: new THREE.Vector3(), radius: 10, size: new THREE.Vector3(), box: new THREE.Box3() };
 
     function setModel(result) {
       group.clear();
@@ -95,6 +95,7 @@
       const box = new THREE.Box3();
       for (const m of meshes.concat(guides)) box.expandByObject(m);
       if (box.isEmpty()) box.set(new THREE.Vector3(-8, 0, -8), new THREE.Vector3(8, 8, 8));
+      bounds.box.copy(box);
       box.getCenter(bounds.center);
       box.getSize(bounds.size);
       bounds.radius = Math.max(8, box.getBoundingSphere(new THREE.Sphere()).radius);
@@ -112,7 +113,8 @@
      *   drop: { n, t } lifts plank n by (1 - t) of a few plank heights (t from 0 to 1),
      *   step: guides of this step are shown,
      *   azimuth, elevation: the camera direction in degrees (default 35, 28),
-     *   zoom: 1 frames the whole model, more is closer,
+     *   zoom: 1 frames the whole model with a margin (it fills 80% of the
+     *     picture), more is closer,
      *   shift: moves the model up in the picture, in fractions of its height (to clear a caption),
      *   target: [x, y, z] in PlankMD coordinates to aim at, instead of the centre,
      * }
@@ -133,14 +135,26 @@
       const az = (view.azimuth === undefined ? 35 : view.azimuth) * deg;
       const el = (view.elevation === undefined ? 28 : view.elevation) * deg;
       const target = view.target ? toScene(view.target) : bounds.center;
-      const dist = (bounds.radius / Math.sin((camera.fov / 2) * deg)) * 0.92 / (view.zoom || 1);
       camera.clearViewOffset();
-      const fit = Math.max(1, (1 / camera.aspect) * 0.9); // portrait frames need more room
-      camera.position.set(
-        target.x + Math.sin(az) * Math.cos(el) * dist * fit,
-        target.y + Math.sin(el) * dist * fit,
-        target.z + Math.cos(az) * Math.cos(el) * dist * fit,
-      );
+      // Frame the corners of the model's box as seen from this direction, so
+      // that tall, long and flat models all fill the picture.
+      const dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+      const fill = Math.min(0.95, 0.8 * (view.zoom || 1));
+      const corners = [];
+      for (const x of [bounds.box.min.x, bounds.box.max.x]) for (const y of [bounds.box.min.y, bounds.box.max.y]) for (const z of [bounds.box.min.z, bounds.box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+      let dist = bounds.radius / Math.sin((camera.fov / 2) * deg);
+      for (let i = 0; i < 4; i++) {
+        camera.position.copy(target).addScaledVector(dir, dist);
+        camera.lookAt(target);
+        camera.updateMatrixWorld();
+        let extent = 0;
+        for (const c of corners) {
+          const p = c.clone().project(camera);
+          extent = Math.max(extent, Math.abs(p.x), Math.abs(p.y));
+        }
+        dist *= extent / fill;
+      }
+      camera.position.copy(target).addScaledVector(dir, dist);
       camera.lookAt(target);
       if (view.shift) {
         const w = renderer.domElement.width, h = renderer.domElement.height;
