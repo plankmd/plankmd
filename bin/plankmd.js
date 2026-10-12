@@ -83,9 +83,10 @@ async function main(argv) {
     else for (const o of out) {
       if (o.error) { console.log(`✗ ${o.file}: ${o.error}`); continue; }
       const worst = o.moved.slice().sort((a, b) => b.distance - a.distance)[0];
+      const most = worst ? ` (most: plank ${worst.n}, ${worst.distance.toFixed(1)} u, ${worst.degrees.toFixed(0)}°)` : '';
       const plank = o.fellAt;
       console.log(o.stood ? `✓ ${o.file}: ${o.replay ? 'stood through the whole build' : 'stood'}, no plank moved`
-        : `✗ ${o.file}: ${o.fellAt ? `fell during the build, once plank ${plank} was placed: ` : ''}${o.moved.length} plank${o.moved.length === 1 ? '' : 's'} moved (most: plank ${worst.n}, ${worst.distance.toFixed(1)} u, ${worst.degrees.toFixed(0)}°)`);
+        : `✗ ${o.file}: ${o.fellAt ? `fell during the build, once plank ${plank} was placed: ` : ''}${o.moved.length ? `${o.moved.length} plank${o.moved.length === 1 ? '' : 's'} moved${most}` : 'planks moved, then settled by the end'}`);
     }
     return failed ? 1 : 0;
   }
