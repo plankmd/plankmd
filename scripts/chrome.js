@@ -40,7 +40,8 @@ async function openPlayerPage(name, search) {
   const page = await browser.newPage();
   const url = pathToFileURL(path.join(__dirname, '..', 'player', name));
   url.search = search;
-  await page.goto(url.href, { waitUntil: 'load' });
+  // No time limit: a page may draw a big model before it is loaded.
+  await page.goto(url.href, { waitUntil: 'load', timeout: 0 });
   return { browser, page };
 }
 
