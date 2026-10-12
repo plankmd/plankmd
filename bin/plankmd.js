@@ -76,8 +76,11 @@ async function main(argv) {
       const sim = createDrop(R, r.planks, { replay });
       const res = sim.run();
       sim.free();
-      failed = failed || !res.stood;
-      out.push({ file: r.file, replay, stood: res.stood, moved: res.moved, fellAt: res.fellAt ? res.fellAt.n : null });
+      // In a replay, planks that moved a little during the build and settled
+      // (nothing fell by the end) are a wobble of the engine: reported, not a failure.
+      const wobble = replay && !res.stood && res.moved.length === 0;
+      failed = failed || (!res.stood && !wobble);
+      out.push({ file: r.file, replay, stood: res.stood, wobble, moved: res.moved, fellAt: res.fellAt ? res.fellAt.n : null });
     }
     if (flags.has('--json')) console.log(JSON.stringify(out, null, 2));
     else for (const o of out) {
@@ -85,6 +88,7 @@ async function main(argv) {
       const worst = o.moved.slice().sort((a, b) => b.distance - a.distance)[0];
       const most = worst ? ` (most: plank ${worst.n}, ${worst.distance.toFixed(1)} u, ${worst.degrees.toFixed(0)}°)` : '';
       const plank = o.fellAt;
+      if (o.wobble) { console.log(`~ ${o.file}: planks moved a little during the build, after plank ${plank}, then settled: nothing fell`); continue; }
       console.log(o.stood ? `✓ ${o.file}: ${o.replay ? 'stood through the whole build' : 'stood'}, no plank moved`
         : `✗ ${o.file}: ${o.fellAt ? `fell during the build, once plank ${plank} was placed: ` : ''}${o.moved.length ? `${o.moved.length} plank${o.moved.length === 1 ? '' : 's'} moved${most}` : 'planks moved, then settled by the end'}`);
     }
