@@ -36,6 +36,12 @@
   const AREA_EPS = 1e-4;
   const FRICTION = 0.45; // pine on pine, dry
   const FRAGILE_TILT = 5; // degrees
+  // Contact polygons are shrunk by this much (in u, about 1 mm) on every side:
+  // a plank whose weight falls right on the edge of its support is not
+  // counted as standing. Real edges are slightly rounded and real hands
+  // place planks a millimetre or two off, so such a plank tips (and does in
+  // the drop test).
+  const EDGE_MARGIN = 0.1;
   // Primal simplex: about twice as fast as the default on these programs.
   const SOLVER_OPTIONS = { solver: 'simplex', simplex_strategy: 4 };
   const DIRECTIONS = [
@@ -46,26 +52,49 @@
 
   // ------------------------------------------------------------- geometry
 
+  // Keeps the part of convex polygon `poly` on the left of the line a → b.
+  function halfPlane(poly, [ax, ay], [bx, by]) {
+    const side = ([x, y]) => (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+    const out = [];
+    for (let j = 0; j < poly.length; j++) {
+      const p = poly[j];
+      const q = poly[(j + 1) % poly.length];
+      const sp = side(p), sq = side(q);
+      if (sp >= -EPS) out.push(p);
+      if ((sp >= -EPS) !== (sq >= -EPS)) {
+        const t = sp / (sp - sq);
+        out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+      }
+    }
+    return out;
+  }
+
   // Clips convex polygon `subject` by convex counter-clockwise polygon `clip`.
   function clip(subject, clipPoly) {
     let out = subject;
     for (let i = 0; i < clipPoly.length && out.length; i++) {
-      const [ax, ay] = clipPoly[i];
-      const [bx, by] = clipPoly[(i + 1) % clipPoly.length];
-      const side = ([x, y]) => (bx - ax) * (y - ay) - (by - ay) * (x - ax);
-      const input = out;
-      out = [];
-      for (let j = 0; j < input.length; j++) {
-        const p = input[j];
-        const q = input[(j + 1) % input.length];
-        const sp = side(p), sq = side(q);
-        if (sp >= -EPS) out.push(p);
-        if ((sp >= -EPS) !== (sq >= -EPS)) {
-          const t = sp / (sp - sq);
-          out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
-        }
-      }
+      out = halfPlane(out, clipPoly[i], clipPoly[(i + 1) % clipPoly.length]);
     }
+    return dedupe(out);
+  }
+
+  // Shrinks convex polygon `poly` by `d` on every side (empty if too thin).
+  function inset(poly, d) {
+    if (!d || poly.length < 3) return poly;
+    const ccw = area(poly) > 0 ? poly : poly.slice().reverse();
+    let out = ccw;
+    for (let i = 0; i < ccw.length && out.length; i++) {
+      const [ax, ay] = ccw[i];
+      const [bx, by] = ccw[(i + 1) % ccw.length];
+      const len = Math.hypot(bx - ax, by - ay);
+      if (len < 1e-9) continue;
+      const nx = (-(by - ay) / len) * d, ny = ((bx - ax) / len) * d; // towards the inside
+      out = halfPlane(out, [ax + nx, ay + ny], [bx + nx, by + ny]);
+    }
+    return dedupe(out);
+  }
+
+  function dedupe(out) {
     return out.filter((p, i) => {
       const q = out[(i + 1) % out.length];
       return out.length < 2 || Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-7;
@@ -83,14 +112,18 @@
   }
 
   /** Contact polygons between each plank and what it rests on (lower = null: the ground). */
-  function contacts(planks) {
+  function contacts(planks, margin = EDGE_MARGIN) {
     const list = [];
     for (const p of planks) {
-      if (Math.abs(p.z0) < EPS) { list.push({ upper: p, lower: null, poly: p.footprint, z: 0 }); continue; }
+      if (Math.abs(p.z0) < EPS) {
+        const poly = inset(p.footprint, margin);
+        if (poly.length >= 3) list.push({ upper: p, lower: null, poly, z: 0 });
+        continue;
+      }
       for (const q of planks) {
         if (q === p || Math.abs(q.z1 - p.z0) >= EPS) continue;
-        const poly = clip(p.footprint, q.footprint);
-        if (poly.length >= 3 && area(poly) > AREA_EPS) list.push({ upper: p, lower: q, poly, z: p.z0 });
+        const poly = inset(clip(p.footprint, q.footprint), margin);
+        if (poly.length >= 3 && Math.abs(area(poly)) > AREA_EPS) list.push({ upper: p, lower: q, poly, z: p.z0 });
       }
     }
     return list;
@@ -349,8 +382,8 @@
     }
 
     function contactBetween(upper, lower) {
-      const poly = clip(upper.p.footprint, lower.p.footprint);
-      if (poly.length >= 3 && area(poly) > AREA_EPS) addContact(upper, lower, poly, upper.p.z0);
+      const poly = inset(clip(upper.p.footprint, lower.p.footprint), EDGE_MARGIN);
+      if (poly.length >= 3 && Math.abs(area(poly)) > AREA_EPS) addContact(upper, lower, poly, upper.p.z0);
     }
 
     return {
@@ -359,7 +392,10 @@
         const weight = p.size[0] * p.size[1] * p.size[2];
         const body = { p, row: rows, weight };
         for (const rhs of [0, 0, weight, 0, 0, 0]) addRow(rhs, rhs);
-        if (Math.abs(p.z0) < EPS) addContact(body, null, p.footprint, 0);
+        if (Math.abs(p.z0) < EPS) {
+          const poly = inset(p.footprint, EDGE_MARGIN);
+          if (poly.length >= 3) addContact(body, null, poly, 0);
+        }
         for (const q of bodies) {
           if (Math.abs(q.p.z1 - p.z0) < EPS) contactBetween(body, q);
           else if (Math.abs(p.z1 - q.p.z0) < EPS) contactBetween(q, body); // a plank slid under one already there
@@ -513,5 +549,5 @@
     return out;
   }
 
-  return { analyse, stands, balance, tilt, tiltMargin, contacts, FRICTION, FRAGILE_TILT };
+  return { analyse, stands, balance, tilt, tiltMargin, contacts, FRICTION, FRAGILE_TILT, EDGE_MARGIN };
 });

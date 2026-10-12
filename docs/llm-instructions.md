@@ -137,11 +137,20 @@ one plank means it is too wide or misplaced (`W-guide-loose`).
    does not hold a plank up.
 4. **It must stand up in real life.** The validator checks it with
    `--physics` (see below); aim for it from the start:
-   - a plank's centre must sit above the plank or planks that support it;
-   - each layer of a corbel (overhang) may stick out by **at most 1.5 u** (half
-     a plank width) beyond the layer below, with a cross plank at the very back
-     of every layer as a counterweight: 3 u per layer tips over after four
-     layers;
+   - a plank's centre must sit above the plank or planks that support it,
+     **inside** their edge, not on it: a plank whose centre is right above the
+     edge of its support tips over;
+   - every plank must stand **when it is placed**, before the planks that will
+     hold it down later: place a counterweight before the overhang it holds;
+   - each layer of a corbel (overhang) may stick out by **at most 1.5 u**
+     beyond the layer below, with a cross plank at the very back of every
+     layer as a counterweight: 3 u per layer tips over after four layers;
+   - compared with the layer just below it, shift a layer only **along the
+     length** of its own planks, never across their width by half a width or
+     more: a plank laid half its width over the edge of the plank below has
+     its centre right on that edge. To make a tower lean both ways, a layer
+     along x moves in x over the layer below, and the next layer, along y,
+     moves in y over it;
    - never turn planks around their end to make a spiral staircase: the stack
      above each plank swings out over its edge and falls. Turn them around
      their centre (a twisted tower), or around the axis of a log-cabin tower;
@@ -176,13 +185,16 @@ flat-y 0 0 1  repeat=6 offset=0,0,2
 flat-y 12 0 1 repeat=6 offset=0,0,2
 ```
 
-**Solid wall, bricklayer bond**: planks end to end, each row shifted by half
-a plank so every joint is covered. The shifted rows are one plank shorter.
+**Solid wall, bond**: planks end to end, each row shifted by one plank
+width (3 u) so that every joint is covered. Do not shift by half a plank:
+the planks at the ends of the wall would rest on half a plank only, their
+centre right on the edge, and tip.
 
 ```plank
 flat-x 0 0 0    repeat=4 offset=0,0,2
 flat-x 15 0 0   repeat=4 offset=0,0,2
-flat-x 7.5 0 1  repeat=4 offset=0,0,2
+flat-x 3 0 1    repeat=4 offset=0,0,2
+flat-x 18 0 1   repeat=4 offset=0,0,2
 ```
 
 **Two walls one plank length apart, measured with a guide** lying along the

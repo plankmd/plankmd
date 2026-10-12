@@ -26,7 +26,8 @@ test('a plank lying on the ground slides before it tips: the limit is the fricti
 
 test('a standing plank tips at the angle of its own half-width over half-height', { skip }, async () => {
   const t = await tiltOf(['up-x 0 0 0']);
-  assert.ok(Math.abs(t - deg(Math.atan(0.5 / 7.5))) < 0.1, `${t}`);
+  // Its edge counts for a little less than its half-thickness: see EDGE_MARGIN.
+  assert.ok(Math.abs(t - deg(Math.atan((0.5 - physics.EDGE_MARGIN) / 7.5))) < 0.1, `${t}`);
   const r = await analyse(block(['up-x 0 0 0']));
   assert.deepEqual(r.diagnostics.map((d) => d.code), ['I-fragile']);
 });
