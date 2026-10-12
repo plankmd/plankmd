@@ -8,9 +8,12 @@
 // It opens player/booklet.html in Chrome (see scripts/chrome.js) and prints
 // it: a cover with the finished model, then every step with its
 // instructions and its views. The same page prints from any browser.
+// With --lang, the texts come from the model's translation in that language
+// (<name>.<lang>.plank.md next to it) when there is one.
 
 const fs = require('fs');
 const { openPlayerPage } = require('./chrome.js');
+const { translationFile } = require('./translation.js');
 
 async function main() {
   const args = process.argv.slice(2);
@@ -24,14 +27,15 @@ async function main() {
   if (!file) throw new Error('usage: node scripts/booklet.js <model.plank.md> [-o out.pdf] [--lang fr]');
   out = out || file.replace(/(\.plank)?\.md$/, '') + '.pdf';
   const text = fs.readFileSync(file, 'utf8');
+  const tr = translationFile(file, text, lang);
   const { browser, page } = await openPlayerPage('booklet.html', `?render=1&lang=${encodeURIComponent(lang)}`);
   try {
     await page.waitForFunction(() => window.PlankMDBooklet);
-    const info = await page.evaluate((t) => window.PlankMDBooklet.build(t), text);
+    const info = await page.evaluate((t, translation) => window.PlankMDBooklet.build(t, translation), text, tr && tr.text);
     // Let the pictures decode before printing.
     await page.evaluate(() => Promise.all([...document.images].map((img) => img.decode().catch(() => {}))));
     await page.pdf({ path: out, format: 'A4', printBackground: true, preferCSSPageSize: true });
-    console.log(`✓ ${out}: "${info.title}", ${info.planks} planks, ${info.steps} steps`);
+    console.log(`✓ ${out}: "${info.title}", ${info.planks} planks, ${info.steps} steps${tr ? `, text from ${tr.file}` : ''}`);
   } finally {
     await browser.close();
   }

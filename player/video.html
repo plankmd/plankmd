@@ -39,6 +39,7 @@ body.render canvas { border-radius: 0; width: auto; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="../src/plankmd.js"></script>
 <script src="samples.js"></script>
+<script src="source.js"></script>
 <script src="wood.js"></script>
 <script src="render.js"></script>
 <script>
@@ -201,7 +202,7 @@ function overlay(seg, t, view) {
   font(Math.min(W, H) * 0.026, 600);
   const label = TEXT.step(step.number, S);
   font(Math.min(W, H) * 0.042, 700);
-  const title = step.title.replace(/^Step\s+\d+\s*:\s*/i, '');
+  const title = step.title.replace(/^\S+\s+\d+\s*:\s*/, ''); // "Step 1: ", "Étape 1 : "...
   const titleLines = wrap(title, maxW - p * 2, 2);
   let bodyLines = [];
   const card = seg.kind === 'card';
@@ -249,8 +250,11 @@ function overlay(seg, t, view) {
 }
 
 // ------------------------------------------------------------------- api
-function load(text) {
+// `translation` is the text of a translation of the model, or nothing: the
+// titles and the instructions then come from it.
+function load(text, translation) {
   model = PlankMD.validate(text);
+  if (translation) model = PlankMD.translate(model, PlankMD.parse(translation));
   render.setModel(model);
   timeline = plan(model);
   return { duration: timeline.duration, fps: FPS, planks: model.planks.length, steps: model.steps.length, title: model.meta.title || '' };
@@ -265,16 +269,7 @@ setFormat(params.get('format') === 'vertical' ? 'vertical' : 'landscape');
 document.getElementById('format').value = params.get('format') === 'vertical' ? 'vertical' : 'landscape';
 if (params.has('render')) document.body.classList.add('render');
 
-const samples = window.PLANKMD_SAMPLES || {};
-async function source() {
-  if (location.hash.startsWith('#code=')) {
-    const b64 = location.hash.slice(6).replace(/-/g, '+').replace(/_/g, '/');
-    return new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));
-  }
-  if (params.get('src')) return (await fetch(params.get('src'))).text();
-  const name = decodeURIComponent(location.hash.slice(1));
-  return samples[name] || samples['gallery/castle'] || Object.values(samples)[0];
-}
+const source = () => PlankMDSource.load({ location, lang: LANG, samples: window.PLANKMD_SAMPLES, translations: window.PLANKMD_TRANSLATIONS });
 
 let playing = false, t0 = 0, at = 0, recorder = null;
 const seek = document.getElementById('seek');
@@ -325,7 +320,7 @@ document.getElementById('record').addEventListener('click', () => {
   play(0);
 });
 
-if (!params.has('render')) source().then((text) => { load(text); show(0); document.body.dataset.ready = 'true'; });
+if (!params.has('render')) source().then(({ text, translation }) => { load(text, translation); show(0); document.body.dataset.ready = 'true'; });
 else document.body.dataset.ready = 'true';
 </script>
 </body>

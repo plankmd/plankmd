@@ -12,8 +12,7 @@ Notre-Dame de Paris, la plus grande, avec 1392
 planchettes en 29 étapes. Chacun tient debout à chaque
 planchette posée, selon le calcul d'équilibre et le test de chute. Ouvrez-en
 un dans le lecteur pour le rejouer étape par étape, planchette par planchette.
-Le lecteur et les modèles sont en français ; les livrets des modèles sont
-encore en anglais.
+Le lecteur, les modèles, leurs notices et leurs vidéos sont en français.
 
 <p><a class="pm-button brand" href="/player/gallery.html?lang=fr" target="_self">Ouvrir la galerie interactive</a> <a class="pm-button alt" href="/player/?lang=fr#gallery/notre-dame" target="_self">Construire Notre-Dame</a></p>
 

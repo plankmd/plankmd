@@ -226,7 +226,7 @@
       githubRepoLink: 'Voir sur GitHub',
       galleryTitle: 'Galerie PlankMD',
       galleryHeading: 'Galerie PlankMD',
-      galleryIntro: "Chaque modèle de la galerie tient debout à chaque planchette posée (calcul d'équilibre) et au test de chute, sauf le plongeoir et la tour penchée, qui tombent exprès. Les modèles sont en français, leurs livrets encore en anglais. Cliquez sur un modèle pour l'ouvrir dans le lecteur.",
+      galleryIntro: "Chaque modèle de la galerie tient debout à chaque planchette posée (calcul d'équilibre) et au test de chute, sauf le plongeoir et la tour penchée, qui tombent exprès. Les modèles, leurs notices et leurs vidéos sont en français. Cliquez sur un modèle pour l'ouvrir dans le lecteur.",
       playerLink: 'Lecteur',
     },
   };

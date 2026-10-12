@@ -22,6 +22,8 @@
   `W-translation-lang`, `W-translation-ignored-key`), and its `source-hash`
   (`plankmd source-hash <model>`) flags a change in the original's text
   (`W-translation-stale`).
+  The booklet and the video use the translation in their language too
+  (`?lang=fr`, `--lang fr`), and every gallery model reads in French.
 
 ## 0.1.0 (draft), 2026-10-11
 

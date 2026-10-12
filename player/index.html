@@ -134,6 +134,7 @@ footer a { color: inherit; }
 <script src="../src/physics.js"></script>
 <script src="../src/drop.js"></script>
 <script src="samples.js"></script>
+<script src="source.js"></script>
 <script src="worker-src.js"></script>
 <script>
 'use strict';
@@ -848,14 +849,12 @@ if (srcUrl) {
     .catch((err) => { loadError = () => T.loadFailed(srcUrl, err.message); renderDiagnostics(); });
 }
 
-// The booklet and the video of the model shown, as it is in the editor.
+// The booklet and the video of the model shown, as it is in the editor, with
+// its translation in the reader's language when the player shows one.
 function openWith(page, e) {
   e.preventDefault();
-  const bytes = new TextEncoder().encode($('src').value);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  const code = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  window.open(`${page}?lang=${lang}#code=${code}`, '_blank', 'noopener');
+  const tr = state && shown().translation ? `&tr=${PlankMDSource.encode(translations[lang])}` : '';
+  window.open(`${page}?lang=${lang}#code=${PlankMDSource.encode($('src').value)}${tr}`, '_blank', 'noopener');
 }
 $('to-booklet').addEventListener('click', (e) => openWith('booklet.html', e));
 $('to-video').addEventListener('click', (e) => openWith('video.html', e));

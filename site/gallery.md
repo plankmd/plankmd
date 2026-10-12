@@ -10,8 +10,9 @@ a sailing ship, a windmill, an amphitheatre, an Eiffel-style tower, a step
 pyramid, a Greek temple, a triumphal arch, and Notre-Dame de Paris, the
 largest, with 1392 planks in 29 steps. Each one stands at every placement in the
 balance check and in a drop test. Open one in the player to replay it step by
-step, plank by plank. Every model also reads in French: its French text is in
-a file next to it (`castle.fr.plank.md` for `castle.plank.md`).
+step, plank by plank. Every model also reads in French, in the player, the booklet
+and the video: its French text is in a file next to it
+(`castle.fr.plank.md` for `castle.plank.md`).
 
 <p><a class="pm-button brand" href="/player/gallery.html" target="_self">Open the interactive gallery</a> <a class="pm-button alt" href="/player/#gallery/notre-dame" target="_self">Build Notre-Dame</a></p>
 
