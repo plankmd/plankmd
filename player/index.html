@@ -57,6 +57,7 @@ html[lang="fr"] .label { width: 72px; }
 #balance, #step-balance { margin: 0; font-size: 13px; }
 .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; margin-top: 4px; }
 #balance:empty, #step-balance:empty { display: none; }
+#measure-row[hidden] { display: none; }
 #sim-status { color: var(--muted); font-size: 13px; }
 .sw.fall { border-color: #7b3fb0; background: repeating-linear-gradient(135deg, #7b3fb0 0 3px, transparent 3px 7px); }
 .code { font-family: ui-monospace, monospace; font-size: 12px; }
@@ -110,6 +111,7 @@ footer a { color: inherit; }
     <p id="step-text"></p>
     <p id="step-guides"></p>
     <p id="step-balance"></p>
+    <div class="row" id="measure-row" hidden><button id="measure-step" data-i18n="measureStep">Measure the tilt of this step</button></div>
     <div class="row"><button id="drop" title="Drop the planks shown in a physics engine, all at once" data-i18n="dropTest" data-i18n-title="dropTitle">Drop test</button><button id="replay" title="Place the planks one by one in a physics engine, in building order, up to the plank shown" data-i18n="replay" data-i18n-title="replayTitle">Replay build</button><button id="reset" hidden data-i18n="reset">Reset</button><span id="sim-status"></span></div>
     <ul id="diag"></ul>
     <textarea id="src" spellcheck="false" aria-label="PlankMD source" data-i18n-aria="source"></textarea>
@@ -425,10 +427,12 @@ function draw() {
   say('step-guides', () => (guides.length ? T.guidesInStep(guides.length) : ''));
   const sb = balance && balance.steps.find((x) => x.step === step);
   const measuring = balance && !balance.complete && !balance.skipped;
+  const unmeasured = sb && sb.stands && sb.tilt === null;
   say('step-balance', () => (falling
     ? T.cannotStand(n)
-    : sb ? (sb.stands ? T.stepWithstands(num(sb.tilt, 1), sb.direction) : T.stepFalls)
-    : measuring ? T.stepMeasuring : ''), sb && (!sb.stands || sb.tilt < PlankMDPhysics.FRAGILE_TILT) ? 'info' : '');
+    : sb ? (!sb.stands ? T.stepFalls : unmeasured ? (sb.measuring ? T.stepMeasuring : T.stepNotMeasured) : T.stepWithstands(num(sb.tilt, 1), sb.direction))
+    : measuring ? T.stepMeasuring : ''), sb && (!sb.stands || (sb.tilt !== null && sb.tilt < PlankMDPhysics.FRAGILE_TILT)) ? 'info' : '');
+  $('measure-row').hidden = !(unmeasured && !sb.measuring && !falling && balance.complete);
   say('hint', () => (current ? T.hint(current.n, current.line, current.id) : ''));
 }
 
@@ -515,6 +519,10 @@ onmessage = async (e) => {
   const id = e.data.id;
   try {
     const highs = await ready;
+    if (e.data.step) {
+      postMessage({ id, measured: PlankMDPhysics.stepTilt(highs, PlankMD.validate(e.data.text), e.data.step) });
+      return;
+    }
     const analysis = PlankMDPhysics.analyse(highs, PlankMD.validate(e.data.text), {
       onProgress: (done, total) => postMessage({ id, progress: [done, total] }),
       onPartial: (partial) => postMessage({ id, partial }),
@@ -554,8 +562,28 @@ $('balance-on').addEventListener('change', () => {
   if (state) { scheduleBalance(state); renderDiagnostics(); draw(); }
 });
 
-function receiveBalance({ id, analysis, error, progress, partial }) {
+// The tilt of the step shown, on demand, when the check skipped it (big models).
+$('measure-step').addEventListener('click', () => {
+  const step = Number($('step').value);
+  const sb = balance && balance.steps.find((x) => x.step === step);
+  if (!sb || !worker) return;
+  sb.measuring = true;
+  worker.postMessage({ id: balanceJob, text: $('src').value, step });
+  draw();
+});
+
+function receiveBalance({ id, analysis, error, progress, partial, measured }) {
   if (id !== balanceJob) return;
+  if (measured !== undefined) {
+    if (measured && balance) {
+      const i = balance.steps.findIndex((x) => x.step === measured.step);
+      if (i >= 0) balance.steps[i] = { step: measured.step, stands: measured.stands, tilt: measured.tilt, direction: measured.direction };
+      balance.diagnostics = balance.diagnostics.concat(measured.diagnostics);
+    }
+    renderDiagnostics();
+    if (!sim) draw();
+    return;
+  }
   if (progress) {
     // Before the first partial result, show the overall progress; after it,
     // the verdict is known and stays on screen while tilts are measured.
@@ -572,14 +600,20 @@ function receiveBalance({ id, analysis, error, progress, partial }) {
     const until = first.until < state.planks.length ? first.until : null;
     say('balance', () => T.balanceFalls(first.plank, until), 'info');
   } else {
+    const all = analysis.tilts === 'all';
     if (!analysis.complete) {
       const k = analysis.steps.length + 1, total = state.steps.length;
-      say('balance', () => T.balanceMeasuring(k, total), 'ok');
+      say('balance', () => (all ? T.balanceMeasuring(k, total) : T.balanceMeasuringLast), 'ok');
     } else {
       const last = analysis.steps[analysis.steps.length - 1];
-      const worst = Math.min(...analysis.steps.map((x) => x.tilt));
-      say('balance', () => T.balanceStands(num(last.tilt, 1), worst < last.tilt - 0.05 ? num(worst, 1) : null),
-        worst < PlankMDPhysics.FRAGILE_TILT ? 'info' : 'ok');
+      const tilts = analysis.steps.filter((x) => x.tilt !== null).map((x) => x.tilt);
+      const worst = Math.min(...tilts);
+      if (!last || last.tilt === null) say('balance', () => '', '');
+      else if (!all) say('balance', () => T.balanceStandsLast(num(last.tilt, 1)), last.tilt < PlankMDPhysics.FRAGILE_TILT ? 'info' : 'ok');
+      else {
+        say('balance', () => T.balanceStands(num(last.tilt, 1), worst < last.tilt - 0.05 ? num(worst, 1) : null),
+          worst < PlankMDPhysics.FRAGILE_TILT ? 'info' : 'ok');
+      }
     }
   }
   renderDiagnostics();

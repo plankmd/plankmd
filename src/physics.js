@@ -446,8 +446,61 @@
    * receives the result so far: once every placement is checked (fast), then
    * after each step's tilt (slower, up to half a minute on 200 planks).
    */
-  function analyse(highs, result, { onProgress, onPartial } = {}) {
-    const out = { skipped: null, stable: true, placements: [], steps: [], diagnostics: [], complete: false };
+  // Above this many planks, the tilt is only measured at the end of the last
+  // step by default: measuring every step of a big model takes minutes, or
+  // an hour for 1400 planks. stepTilt() measures one more step on demand.
+  const TILT_ALL_MAX = 300;
+
+  // The smallest tilt the construction modelled by `model` withstands, over
+  // the eight directions: { degrees, direction }.
+  function worstTilt(model, onDirection) {
+    let m = { degrees: Infinity, direction: null };
+    for (const [name, dx, dy] of DIRECTIONS) {
+      const d = model.tilt(dx, dy);
+      if (d < m.degrees) m = { degrees: d, direction: name };
+      if (onDirection) onDirection();
+    }
+    return m;
+  }
+
+  function fragile(step, m) {
+    return {
+      code: 'I-fragile', severity: 'info', step: step.number, line: step.line, tilt: m.degrees,
+      message: `At the end of step ${step.number}, the construction stands, but tilting it by ` +
+        `${m.degrees.toFixed(1)}° (towards ${m.direction}) is enough to make it fall.`,
+    };
+  }
+
+  /**
+   * Measures the tilt at the end of one step, on demand: { step, stands,
+   * tilt, direction, diagnostics } (tilt 0 when it does not stand), or null
+   * when the step has no planks or the model cannot be checked.
+   */
+  function stepTilt(highs, result, stepNumber) {
+    const step = result.steps.find((s) => s.number === stepNumber);
+    const planks = result.planks.filter((p) => p.step <= stepNumber);
+    if (!step || !planks.length) return null;
+    if (result.diagnostics.some((d) => d.severity === 'error' || d.code === 'W-floating')) return null;
+    const model = incremental(highs, { friction: true });
+    try {
+      for (const p of planks) model.add(p);
+      const stands = model.stands();
+      const m = stands ? worstTilt(model) : { degrees: 0, direction: null };
+      return { step: stepNumber, stands, tilt: m.degrees, direction: m.direction,
+        diagnostics: stands && m.degrees < FRAGILE_TILT ? [fragile(step, m)] : [] };
+    } finally {
+      model.dispose();
+    }
+  }
+
+  /**
+   * The whole balance check. `tilts` says at the end of which steps the tilt
+   * is measured: 'all', 'last', 'none' or a list of step numbers. Default:
+   * 'all' up to TILT_ALL_MAX planks, 'last' above. Steps not measured come
+   * back with tilt: null.
+   */
+  function analyse(highs, result, { onProgress, onPartial, tilts } = {}) {
+    const out = { skipped: null, stable: true, placements: [], steps: [], diagnostics: [], complete: false, tilts: null };
     const blocking = result.diagnostics.filter((d) => d.severity === 'error' || d.code === 'W-floating');
     if (blocking.length) {
       out.skipped = 'the model has errors or floating planks: fix them first';
@@ -455,9 +508,14 @@
       return out;
     }
     const planks = result.planks;
-    // Work units: one per placement, and one per tilt direction per step
-    // (a tilt costs about two placements).
-    const total = planks.length + 2 * DIRECTIONS.length * result.steps.length;
+    const mode = tilts || (planks.length <= TILT_ALL_MAX ? 'all' : 'last');
+    out.tilts = mode;
+    const withPlanks = result.steps.filter((s) => planks.some((p) => p.step === s.number)).map((s) => s.number);
+    const measured = new Set(Array.isArray(mode) ? mode
+      : mode === 'all' ? withPlanks : mode === 'last' ? withPlanks.slice(-1) : []);
+    // Work units: one per placement, and one per tilt direction per measured
+    // step (a tilt costs about two placements).
+    const total = planks.length + 2 * DIRECTIONS.length * withPlanks.filter((n) => measured.has(n)).length;
     let done = 0;
     const progress = (k) => { done += k; if (onProgress) onProgress(Math.min(done, total), total); };
     const partial = () => { if (onPartial) onPartial(JSON.parse(JSON.stringify(out))); };
@@ -513,41 +571,34 @@
     partial();
 
     // Pass 2, slower: how much tilt does it withstand at the end of each
-    // step? One model with friction grows step by step; each step's result
-    // is reported as soon as it is known.
-    const tiltModel = incremental(highs, { friction: true });
+    // measured step? One model with friction grows step by step; each step's
+    // result is reported as soon as it is known.
+    const tiltModel = measured.size ? incremental(highs, { friction: true }) : null;
     let count = 0;
     try {
       for (const step of result.steps) {
         const upTo = planks.filter((p) => p.step <= step.number).length;
-        if (!upTo) continue;
-        while (count < upTo) tiltModel.add(planks[count++]);
+        if (!upTo || !withPlanks.includes(step.number)) continue;
         const stands = out.placements[upTo - 1].stands;
-        let m = { degrees: 0, direction: null };
-        if (stands) {
-          m = { degrees: Infinity, direction: null };
-          for (const [name, dx, dy] of DIRECTIONS) {
-            const d = tiltModel.tilt(dx, dy);
-            if (d < m.degrees) m = { degrees: d, direction: name };
-            progress(2);
-          }
-        } else progress(2 * DIRECTIONS.length);
-        out.steps.push({ step: step.number, stands, tilt: m.degrees, direction: m.direction });
-        if (stands && m.degrees < FRAGILE_TILT) {
-          out.diagnostics.push({
-            code: 'I-fragile', severity: 'info', step: step.number, line: step.line, tilt: m.degrees,
-            message: `At the end of step ${step.number}, the construction stands, but tilting it by ` +
-              `${m.degrees.toFixed(1)}° (towards ${m.direction}) is enough to make it fall.`,
-          });
+        if (!measured.has(step.number)) {
+          out.steps.push({ step: step.number, stands, tilt: null, direction: null });
+          continue;
         }
+        while (count < upTo) tiltModel.add(planks[count++]);
+        partial(); // the steps skipped so far are known: say so before measuring
+        let m = { degrees: 0, direction: null };
+        if (stands) m = worstTilt(tiltModel, () => progress(2));
+        else progress(2 * DIRECTIONS.length);
+        out.steps.push({ step: step.number, stands, tilt: m.degrees, direction: m.direction });
+        if (stands && m.degrees < FRAGILE_TILT) out.diagnostics.push(fragile(step, m));
         partial();
       }
     } finally {
-      tiltModel.dispose();
+      if (tiltModel) tiltModel.dispose();
     }
     out.complete = true;
     return out;
   }
 
-  return { analyse, stands, balance, tilt, tiltMargin, contacts, FRICTION, FRAGILE_TILT, EDGE_MARGIN };
+  return { analyse, stepTilt, stands, balance, tilt, tiltMargin, contacts, FRICTION, FRAGILE_TILT, EDGE_MARGIN, TILT_ALL_MAX };
 });

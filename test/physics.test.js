@@ -88,3 +88,30 @@ test('every pattern in the LLM instructions stands', { skip }, async () => {
     assert.equal(r.stable, true, b);
   }
 });
+
+test('a big model only gets the tilt of its last step, unless asked', { skip }, async () => {
+  // A log-cabin tower of 304 planks in two steps: above TILT_ALL_MAX.
+  const layers = (from, count) => [
+    `flat-x 0 0 ${from} repeat=${count} offset=0,0,2`, `flat-x 0 12 ${from} repeat=${count} offset=0,0,2`,
+    `flat-y 0 0 ${from + 1} repeat=${count} offset=0,0,2`, `flat-y 12 0 ${from + 1} repeat=${count} offset=0,0,2`];
+  const text = steps(layers(0, 38), layers(76, 38));
+  const result = validate(text);
+  assert.ok(result.planks.length > physics.TILT_ALL_MAX);
+  const r = physics.analyse(await load(), result);
+  assert.equal(r.tilts, 'last');
+  assert.deepEqual(r.steps.map((s) => [s.step, s.stands, s.tilt === null]), [[1, true, true], [2, true, false]]);
+  assert.ok(r.steps[1].tilt > 0);
+});
+
+test('the tilt of one step on demand is the one a full check measures', { skip }, async () => {
+  const text = fs.readFileSync(path.join(__dirname, '..', 'samples', 'corbel-bridge.plank.md'), 'utf8');
+  const full = physics.analyse(await load(), validate(text), { tilts: 'all' });
+  for (const s of full.steps) {
+    const one = physics.stepTilt(await load(), validate(text), s.step);
+    assert.equal(one.stands, s.stands);
+    assert.ok(Math.abs(one.tilt - s.tilt) < 0.05, `step ${s.step}: ${one.tilt} vs ${s.tilt}`);
+    // The direction may differ when two are tied, as on a symmetric model.
+  }
+  const some = physics.analyse(await load(), validate(text), { tilts: [2] });
+  assert.deepEqual(some.steps.map((s) => s.tilt === null), [true, false, true]);
+});

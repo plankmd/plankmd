@@ -6,7 +6,7 @@ const path = require('path');
 const PlankMD = require('../src/plankmd.js');
 
 const USAGE = `Usage:
-  plankmd validate <file.plank.md>... [--json] [--strict] [--physics]
+  plankmd validate <file.plank.md>... [--json] [--strict] [--physics [--all-tilts]]
   plankmd expand <file.plank.md> [--json]
   plankmd drop <file.plank.md>... [--replay] [--json]
 
@@ -21,8 +21,10 @@ drop      Drops the finished model in a physics engine (Rapier) and reports
   --json    Machine-readable output.
   --strict  Treat warnings as errors.
   --physics Also check that the construction stands at every placement, and
-            how much tilt it withstands at the end of every step. Needs the
-            optional "highs" package. Reports information only (I- codes).`;
+            how much tilt it withstands at the end of every step (only the
+            last step above 300 planks: --all-tilts measures them all).
+            Needs the optional "highs" package. Reports information only
+            (I- codes).`;
 
 async function loadPhysics() {
   let highs;
@@ -52,7 +54,7 @@ async function main(argv) {
     try { loaded = await loadPhysics(); } catch (e) { console.error(e.message); return 2; }
     for (const r of results) {
       if (r.error) continue;
-      r.physics = loaded.physics.analyse(loaded.solver, r);
+      r.physics = loaded.physics.analyse(loaded.solver, r, flags.has('--all-tilts') ? { tilts: 'all' } : {});
       r.diagnostics = r.diagnostics.concat(r.physics.diagnostics)
         .sort((a, b) => (a.line || 0) - (b.line || 0) || (a.plank || 0) - (b.plank || 0));
     }
@@ -133,9 +135,9 @@ async function main(argv) {
     if (r.physics) {
       if (r.physics.skipped) console.log(`${name}: physics skipped, ${r.physics.skipped}`);
       for (const s of r.physics.steps) {
-        console.log(`${name}: step ${s.step} ${s.stands
-          ? `stands, withstands a ${s.tilt.toFixed(1)}° tilt (towards ${s.direction})`
-          : 'falls'}`);
+        console.log(`${name}: step ${s.step} ${!s.stands ? 'falls'
+          : s.tilt === null ? 'stands (tilt not measured)'
+            : `stands, withstands a ${s.tilt.toFixed(1)}° tilt (towards ${s.direction})`}`);
       }
     }
     console.log(`${bad ? '✗' : '✓'} ${name}: ${r.planks.length} plank${r.planks.length === 1 ? '' : 's'}, ${r.steps.length} step${r.steps.length === 1 ? '' : 's'}, ` +

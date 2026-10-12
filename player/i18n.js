@@ -88,6 +88,8 @@
       stepWithstands: (tilt, dir) => `End of this step: withstands a ${tilt}° tilt (towards ${dir}).`,
       stepFalls: 'End of this step: the construction falls.',
       stepMeasuring: 'End of this step: measuring the tilt…',
+      stepNotMeasured: 'End of this step: stands. The tilt is only measured at the last step of a big model.',
+      measureStep: 'Measure the tilt of this step',
       hint: (n, line, id) => `Plank ${n}, line ${line}${id ? `, ${id}` : ''}`,
       planks: (n) => `${n} plank${s(n)}`,
       steps: (n) => `${n} step${s(n)}`,
@@ -102,6 +104,8 @@
       balanceSkipped: (reason) => `Balance: not checked, ${reason}.`,
       balanceFalls: (from, to) => `Balance: falls from plank ${from}${to ? ` to plank ${to}` : ''}.`,
       balanceMeasuring: (k, total) => `Balance: stands at every placement. Measuring the tilt it withstands: step ${k} of ${total}…`,
+      balanceMeasuringLast: 'Balance: stands at every placement. Measuring the tilt it withstands once built…',
+      balanceStandsLast: (tilt) => `Balance: stands at every placement, withstands a ${tilt}° tilt once built (measured at the last step only, on a model this big).`,
       balanceStands: (tilt, worst) => `Balance: stands at every placement, withstands a ${tilt}° tilt once built` +
         (worst ? ` (${worst}° during the build)` : '') + '.',
       simLoading: 'Loading the physics engine…',
@@ -168,6 +172,8 @@
       stepWithstands: (tilt, dir) => `Fin de cette étape : résiste à une inclinaison de ${tilt}° (vers ${dir}).`,
       stepFalls: 'Fin de cette étape : la construction tombe.',
       stepMeasuring: "Fin de cette étape : mesure de l'inclinaison…",
+      stepNotMeasured: "Fin de cette étape : tient. Sur un grand modèle, l'inclinaison n'est mesurée qu'à la dernière étape.",
+      measureStep: "Mesurer l'inclinaison de cette étape",
       hint: (n, line, id) => `Planchette ${n}, ligne ${line}${id ? `, ${id}` : ''}`,
       planks: (n) => `${n} planchette${sFr(n)}`,
       steps: (n) => `${n} étape${sFr(n)}`,
@@ -184,6 +190,8 @@
         ? `Équilibre : tombe de la planchette ${from} à la planchette ${to}.`
         : `Équilibre : tombe à partir de la planchette ${from}.`),
       balanceMeasuring: (k, total) => `Équilibre : tient à chaque pose. Mesure de l'inclinaison supportée : étape ${k} sur ${total}…`,
+      balanceMeasuringLast: "Équilibre : tient à chaque pose. Mesure de l'inclinaison supportée une fois monté…",
+      balanceStandsLast: (tilt) => `Équilibre : tient à chaque pose, résiste à une inclinaison de ${tilt}° une fois monté (mesurée à la dernière étape seulement, sur un modèle de cette taille).`,
       balanceStands: (tilt, worst) => `Équilibre : tient à chaque pose, résiste à une inclinaison de ${tilt}° une fois monté` +
         (worst ? ` (${worst}° pendant le montage)` : '') + '.',
       simLoading: 'Chargement du moteur physique…',
