@@ -54,6 +54,13 @@
     return lang === 'fr' ? t.replace(/(\d)\.(\d)/g, '$1,$2') : t;
   };
 
+  // "1", "1 to 4", "1, 3 and 5": scaffold numbers, in English and in French.
+  const contiguous = (ns) => ns.length > 1 && ns.every((v, i) => !i || v === ns[i - 1] + 1);
+  const scaffoldsEn = (ns) => (ns.length === 1 ? `scaffold ${ns[0]}`
+    : contiguous(ns) ? `scaffolds ${ns[0]} to ${ns[ns.length - 1]}` : `scaffolds ${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`);
+  const scaffoldsFr = (ns) => (ns.length === 1 ? `l'étai ${ns[0]}`
+    : contiguous(ns) ? `les étais ${ns[0]} à ${ns[ns.length - 1]}` : `les étais ${ns.slice(0, -1).join(', ')} et ${ns[ns.length - 1]}`);
+
   const STRINGS = {
     en: {
       pageTitle: 'PlankMD Player',
@@ -117,12 +124,30 @@
         (moved ? `: ${moved} plank${s(moved)} moved in the end.` : '.'),
       simStoodBuild: (n) => `Stood through the whole build (${n} planks).`,
       simStood: 'Stood: no plank moved.',
-      simFell: (moved, cm, n) => `Fell: ${moved} plank${s(moved)} moved, up to ${cm} cm (plank ${n}).`,
+      simFell: (moved, cm, n) => `Fell: ${moved} plank${s(moved)} moved, up to ${cm} cm${n ? ` (plank ${n})` : ''}.`,
+      simMoving: (k, n) => `Move ${k} of ${n}…`,
+      simFellRemoval: (moved) => `Fell once the scaffolding was removed${moved ? `: ${moved} plank${s(moved)} moved in the end.` : '.'}`,
+      simFellScaffold: (k, moved) => `Fell during the build, once scaffold ${k} was placed${moved ? `: ${moved} plank${s(moved)} moved in the end.` : '.'}`,
       loadFailed: (url, msg) => `Could not load ${url}: ${msg}`,
       booklet: 'Booklet (PDF)',
       colours: 'Colours',
       grain: 'Wood grain',
       video: 'Video',
+      legendScaffold: 'scaffold, take away after use',
+      authorView: "Author's view",
+      authorViewTitle: 'Turn the camera to where the author looks from',
+      scaffoldsInStep: (n, later) => `${n} scaffold plank${s(n)} in this step: ${n === 1 ? 'it carries' : 'they carry'} the planks above while they go on, then ${n === 1 ? 'it comes' : 'they come'} away ${later ? 'in a later step' : 'at the end of the step'}.`,
+      scaffoldsRemoved: (ns) => `Take away ${scaffoldsEn(ns)}.`,
+      hintScaffold: (k, line) => `Scaffold ${k}, line ${line}`,
+      hintRemove: (ns) => `Take away ${scaffoldsEn(ns)}`,
+      cannotStandRemoval: 'Without its scaffolding, the construction cannot stand like this.',
+      balanceFallsRemoval: 'Balance: falls when the scaffolding is removed.',
+      minutes: (m) => `about ${m} min`,
+      publishedAt: 'Published at',
+      basedOn: 'After',
+      photoAlt: 'The model, built',
+      galleryAll: 'All',
+      galleryTags: 'Filter by tag',
       githubLoading: (where) => `Loading models from ${where} on GitHub…`,
       githubFrom: 'From GitHub:',
       githubGroup: (where) => `GitHub: ${where}`,
@@ -137,7 +162,7 @@
       githubRepoLink: 'See on GitHub',
       galleryTitle: 'PlankMD Gallery',
       galleryHeading: 'PlankMD gallery',
-      galleryIntro: 'Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. Click one to open it in the player.',
+      galleryIntro: 'Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. The tent, made of leaning planks, is checked by the drop test only. Click one to open it in the player.',
       playerLink: 'Player',
     },
     fr: {
@@ -206,12 +231,32 @@
         (moved ? ` : ${moved} planchette${sFr(moved)} ${moved === 1 ? 'a' : 'ont'} bougé au final.` : '.'),
       simStoodBuild: (n) => `Tient pendant tout le montage (${n} planchette${sFr(n)}).`,
       simStood: "Tient : aucune planchette n'a bougé.",
-      simFell: (moved, cm, n) => `Tombe : ${moved} planchette${sFr(moved)} ${moved === 1 ? 'a' : 'ont'} bougé, jusqu'à ${cm} cm (planchette ${n}).`,
+      simFell: (moved, cm, n) => `Tombe : ${moved} planchette${sFr(moved)} ${moved === 1 ? 'a' : 'ont'} bougé, jusqu'à ${cm} cm${n ? ` (planchette ${n})` : ''}.`,
+      simMoving: (k, n) => `Action ${k} sur ${n}…`,
+      simFellRemoval: (moved) => `Tombe au retrait de l'échafaudage` +
+        (moved ? ` : ${moved} planchette${sFr(moved)} ${moved === 1 ? 'a' : 'ont'} bougé au final.` : '.'),
+      simFellScaffold: (k, moved) => `Tombe pendant le montage, une fois l'étai ${k} posé` +
+        (moved ? ` : ${moved} planchette${sFr(moved)} ${moved === 1 ? 'a' : 'ont'} bougé au final.` : '.'),
       loadFailed: (url, msg) => `Impossible de charger ${url} : ${msg}`,
       booklet: 'Notice (PDF)',
       colours: 'Couleurs',
       grain: 'Veinage du bois',
       video: 'Vidéo',
+      legendScaffold: 'étai, à retirer après usage',
+      authorView: "Vue de l'auteur",
+      authorViewTitle: "Tourner la caméra vers le point de vue de l'auteur",
+      scaffoldsInStep: (n, later) => `${n} étai${sFr(n)} dans cette étape : ${n === 1 ? 'il porte' : 'ils portent'} les planchettes du dessus pendant la pose, puis on ${n === 1 ? 'le' : 'les'} retire ${later ? 'dans une étape suivante' : "à la fin de l'étape"}.`,
+      scaffoldsRemoved: (ns) => `Retirez ${scaffoldsFr(ns)}.`,
+      hintScaffold: (k, line) => `Étai ${k}, ligne ${line}`,
+      hintRemove: (ns) => `Retirez ${scaffoldsFr(ns)}`,
+      cannotStandRemoval: 'Sans son échafaudage, la construction ne peut pas tenir ainsi.',
+      balanceFallsRemoval: "Équilibre : tombe au retrait de l'échafaudage.",
+      minutes: (m) => `environ ${m} min`,
+      publishedAt: 'Publié sur',
+      basedOn: "D'après",
+      photoAlt: 'Le modèle, construit',
+      galleryAll: 'Tous',
+      galleryTags: 'Filtrer par mot-clé',
       githubLoading: (where) => `Chargement des modèles de ${where} sur GitHub…`,
       githubFrom: 'Depuis GitHub :',
       githubGroup: (where) => `GitHub : ${where}`,
@@ -226,7 +271,7 @@
       githubRepoLink: 'Voir sur GitHub',
       galleryTitle: 'Galerie PlankMD',
       galleryHeading: 'Galerie PlankMD',
-      galleryIntro: "Chaque modèle de la galerie tient debout à chaque planchette posée (calcul d'équilibre) et au test de chute, sauf le plongeoir et la tour penchée, qui tombent exprès. Les modèles, leurs notices et leurs vidéos sont en français. Cliquez sur un modèle pour l'ouvrir dans le lecteur.",
+      galleryIntro: "Chaque modèle de la galerie tient debout à chaque planchette posée (calcul d'équilibre) et au test de chute, sauf le plongeoir et la tour penchée, qui tombent exprès. La tente, en planchettes inclinées, n'est vérifiée que par le test de chute. Les modèles, leurs notices et leurs vidéos sont en français. Cliquez sur un modèle pour l'ouvrir dans le lecteur.",
       playerLink: 'Lecteur',
     },
   };
@@ -236,6 +281,7 @@
     'the model has errors or floating planks: fix them first': 'le modèle a des erreurs ou des planchettes qui ne reposent sur rien : corrigez-les d\'abord',
     'the balance check could not start': "la vérification n'a pas pu démarrer",
     'this browser cannot run it in the background': 'ce navigateur ne peut pas la lancer en arrière-plan',
+    'the model has leaning planks, which it cannot model yet: use the drop test': "le modèle a des planchettes inclinées, qu'elle ne sait pas encore traiter : faites le test de chute",
   };
 
   // French explanations of the diagnostics, by code. Each entry lists the
@@ -244,7 +290,34 @@
   // the English wording ever changes.
   const plank = (n, source) => `planchette ${n}${source !== undefined ? ` (${q(source)})` : ''}`;
   const Plank = (n, source) => `La ${plank(n, source)}`;
+  // The plank or scaffold a diagnostic is about, from its fields.
+  const Who = (d) => (d.scaffold ? `L'étai ${d.scaffold}` : Plank(d.plank));
   const listOf = (ns) => (ns.length > 8 ? `${ns.slice(0, 8).join(', ')} et ${ns.length - 8} autres` : ns.length > 1 ? `${ns.slice(0, -1).join(', ')} et ${ns[ns.length - 1]}` : `${ns[0]}`);
+  // A scaffold plank (docs/proposals/scaffold.md) is an "étai" in French.
+  // `kind` is the word of the English message: "plank" or "scaffold".
+  const elt = (kind, n, source) => (kind === 'scaffold' ? `étai ${n}` : `planchette ${n}`) + (source !== undefined ? ` (${q(source)})` : '');
+  const the = (kind, n, source) => (kind === 'scaffold' ? `l'${elt(kind, n, source)}` : `la ${elt(kind, n, source)}`);
+  const The = (kind, n, source) => { const t = the(kind, n, source); return t[0].toUpperCase() + t.slice(1); };
+  const placed = (kind) => (kind === 'scaffold' ? 'posé' : 'posée');
+  // "scaffold 1", "scaffolds 1 to 4", "scaffolds 1, 3 and 5", from the numbers.
+  const etais = (ns) => (ns.length === 1 ? `l'étai ${ns[0]}`
+    : ns.every((v, i) => !i || v === ns[i - 1] + 1) ? `les étais ${ns[0]} à ${ns[ns.length - 1]}` : `les étais ${listOf(ns)}`);
+  const removedFr = (ns) => `${etais(ns)} ${ns.length > 1 ? 'sont retirés' : 'est retiré'}`;
+  // The scaffold numbers of "scaffold 2", "scaffolds 1 to 4", "scaffolds 1, 3 and 5".
+  const numbers = (text) => {
+    const range = text.match(/(\d+) to (\d+)/);
+    if (range) return Array.from({ length: range[2] - range[1] + 1 }, (_, i) => Number(range[1]) + i);
+    return (text.match(/\d+/g) || []).map(Number);
+  };
+  const MUST = {
+    'an absolute https: URL': 'une adresse https: complète',
+    'an absolute https: URL, or text': 'une adresse https: complète, ou du texte',
+    'a date written YYYY-MM-DD': 'une date écrite AAAA-MM-JJ',
+    'an https: URL, or a path next to the file (no "..")': `une adresse https:, ou un chemin à côté du fichier (sans ${q('..')})`,
+    'a list of lower-case words, e.g. [castle, bridge]': 'une liste de mots en minuscules, par exemple [chateau, pont]',
+    'a positive integer': 'un nombre entier positif',
+  };
+  const VIEW_HELP = 'une direction (front, back-left, top…) ou un azimut, puis une élévation facultative';
   const FR_DIAGNOSTICS = {
     'E-frontmatter': [
       [/^Unexpected indented line: "(.*)"$/, (m) => `Ligne indentée inattendue : ${q(m[1])}`],
@@ -253,6 +326,7 @@
       [/^"(.*)" must be an integer$/, (m) => `${q(m[1])} doit être un nombre entier`],
       [/^"(.*)" must be a positive number$/, (m) => `${q(m[1])} doit être un nombre positif`],
       [/^"palette" must be a mapping/, () => `${q('palette')} doit associer des noms à des couleurs`],
+      [/^"(.*)" must be (.*)$/, (m) => (MUST[m[2]] ? `${q(m[1])} doit être ${MUST[m[2]]}` : null)],
       () => "L'en-tête (frontmatter) contient une erreur",
     ],
     'W-frontmatter': [
@@ -272,23 +346,24 @@
     ],
     'W-unknown-attribute': [
       [/^Unknown attribute "(.*)" ignored$/, (m) => `Attribut inconnu ${q(m[1])}, ignoré`],
+      [/^Unknown attribute "until" ignored: it only applies to scaffold lines$/, () => `Attribut ${q('until')} ignoré : il ne s'applique qu'aux lignes ${q('scaffold')}`],
       () => 'Attribut inconnu, ignoré',
     ],
     'E-duplicate-id': [
-      [/^plank \d+ \("(.*)"\): id "(.*)" is already used by plank (\d+)$/, (m, d) => `${Plank(d.plank, m[1])} : l'identifiant ${q(m[2])} est déjà utilisé par la planchette ${m[3]}`],
-      (d) => `${Plank(d.plank)} : cet identifiant est déjà utilisé par une autre planchette`,
+      [/^(plank|scaffold) (\d+) \("(.*)"\): id "(.*)" is already used by (plank|scaffold) (\d+)$/, (m) => `${The(m[1], m[2], m[3])} : l'identifiant ${q(m[4])} est déjà utilisé par ${the(m[5], m[6])}`],
+      (d) => `${Who(d)} : cet identifiant est déjà utilisé par une autre planchette`,
     ],
     'E-below-ground': [
-      [/^plank \d+ \("(.*)"\) goes below the ground \(z = (.*)\)$/, (m, d) => `${Plank(d.plank, m[1])} passe sous le sol (z = ${num('fr', m[2])})`],
-      (d) => `${Plank(d.plank)} passe sous le sol`,
+      [/^(plank|scaffold) (\d+) \("(.*)"\) goes below the ground \(z = (.*)\)$/, (m) => `${The(m[1], m[2], m[3])} passe sous le sol (z = ${num('fr', m[4])})`],
+      (d) => `${Who(d)} passe sous le sol`,
     ],
     'E-overlap': [
-      [/^plank \d+ \("(.*)"\) goes through plank (\d+) \(line (\d+)\)$/, (m, d) => `${Plank(d.plank, m[1])} traverse la planchette ${m[2]} (ligne ${m[3]})`],
-      (d) => `${Plank(d.plank)} traverse la planchette ${d.other}`,
+      [/^(plank|scaffold) (\d+) \("(.*)"\) goes through (plank|scaffold) (\d+) \(line (\d+)\)$/, (m) => `${The(m[1], m[2], m[3])} traverse ${the(m[4], m[5])} (ligne ${m[6]})`],
+      (d) => `${Who(d)} traverse ${d.otherScaffold ? `l'étai ${d.otherScaffold}` : `la planchette ${d.other}`}`,
     ],
     'W-floating': [
-      [/^plank \d+ \("(.*)"\) rests on nothing when it is placed$/, (m, d) => `${Plank(d.plank, m[1])} ne repose sur rien quand elle est posée`],
-      (d) => `${Plank(d.plank)} ne repose sur rien quand elle est posée`,
+      [/^(plank|scaffold) (\d+) \("(.*)"\) rests on nothing when it is placed$/, (m) => `${The(m[1], m[2], m[3])} ne repose sur rien quand ${m[1] === 'scaffold' ? 'il est posé' : 'elle est posée'}`],
+      (d) => `${Who(d)} ne repose sur rien quand elle est posée`,
     ],
     'E-guide-overlap': [
       [/^guide \("(.*)"\) goes through plank (\d+) \(line (\d+)\): the gap is too small$/,
@@ -306,6 +381,7 @@
     ],
     'W-inventory': [
       [/^(\d+) planks, but the inventory is (\d+)$/, (m) => `${m[1]} planchettes, mais l'inventaire n'en compte que ${m[2]}`],
+      [/^(\d+) planks at once, scaffolds included, but the inventory is (\d+)$/, (m) => `${m[1]} planchettes en même temps, étais compris, mais l'inventaire n'en compte que ${m[2]}`],
       () => "Le modèle demande plus de planchettes que l'inventaire n'en compte",
     ],
     'E-translation-source': [
@@ -336,19 +412,62 @@
         (m) => `Le texte de l'original ${q(m[1])} a changé depuis cette traduction : vérifiez-la, puis mettez ${q('source-hash')} à ${m[2]}`],
       () => "Le texte de l'original a changé depuis cette traduction",
     ],
+    'E-lean': [
+      [/^Invalid lean "(.*)": /, (m) => `Inclinaison invalide ${q(m[1])} : attendu <direction>:<degrés>, la direction parmi +x, -x, +y, -y et l'angle entre 0 et 90, par exemple -x:20`],
+      () => "Inclinaison invalide : attendu <direction>:<degrés>, par exemple -x:20",
+    ],
+    'W-view': [
+      [/^Invalid view "(.*)": /, (m) => `Vue invalide ${q(m[1])} : attendu ${VIEW_HELP}, par exemple back-left,20`],
+      [/^Expected key=value after "plank", got "(.*)"$/, (m) => `Attendu clé=valeur après ${q('plank')}, trouvé ${q(m[1])}`],
+      [/^Invalid zoom "(.*)": /, (m) => `Zoom invalide ${q(m[1])} : attendu un nombre positif`],
+      [/^Invalid focus "(.*)": /, (m) => `Cadrage invalide ${q(m[1])} : attendu ${q('step')} ou l'identifiant d'une planchette`],
+      [/^Step (\d+): focus "(.*)" names no plank placed by the end of the step$/, (m) => `Étape ${m[1]} : le cadrage ${q(m[2])} ne nomme aucune planchette posée avant la fin de l'étape`],
+      () => 'Indication de vue invalide, ignorée',
+    ],
+    'W-scaffold-release': [
+      [/^scaffold (\d+) \("(.*)"\): "until" names (?:the scaffold "(.*)": .*|no plank: there is no id "(.*)"|plank (\d+), which is placed before it)\. It is removed at the end of step (\d+)$/, (m) => {
+        const why = m[3] !== undefined ? `${q('until')} nomme l'étai ${q(m[3])} : un étai est libéré par une planchette de la construction`
+          : m[4] !== undefined ? `${q('until')} ne nomme aucune planchette : il n'y a pas d'identifiant ${q(m[4])}`
+            : `${q('until')} nomme la planchette ${m[5]}, qui est posée avant lui`;
+        return `L'${elt('scaffold', m[1], m[2])} : ${why}. Il est retiré à la fin de l'étape ${m[6]}`;
+      }],
+      (d) => `L'étai ${d.scaffold} : ${q('until')} ne nomme pas une planchette posée après lui. Il est retiré à la fin de son étape`,
+    ],
+    'W-scaffold-floating': [
+      [/^(plank|scaffold) (\d+) \("(.*)"\) rests on nothing once (.*) (?:is|are) removed$/, (m) => `${The(m[1], m[2], m[3])} ne repose plus sur rien quand ${removedFr(numbers(m[4]))}`],
+      (d) => `${d.scaffold ? `L'étai ${d.scaffold}` : `La planchette ${d.plank}`} ne repose plus sur rien quand l'échafaudage est retiré`,
+    ],
+    'W-scaffold-wedged': [
+      [/^scaffold (\d+) \("(.*)"\) carries (plank|scaffold) (\d+) and has planks against it on every side: it cannot slide out$/,
+        (m) => `L'${elt('scaffold', m[1], m[2])} porte ${the(m[3], m[4])} et a des planchettes contre lui de tous les côtés : il ne peut pas glisser hors de la construction`],
+      (d) => `L'étai ${d.scaffold} est coincé de tous les côtés : il ne peut pas glisser hors de la construction`,
+    ],
+    'I-unchecked-lean': [
+      // Built from the fields.
+      (d) => `La vérification de l'équilibre ne sait pas encore traiter les planchettes inclinées (${d.scaffold ? `l'étai ${d.scaffold} est incliné` : `la planchette ${d.plank} est inclinée`}) : faites le test de chute pour voir si la construction tient.`,
+    ],
     'I-unstable': [
-      // Built from the fields: the planks that give way are all in `failing`.
+      // Built from the fields: the planks that give way are all in `failing`,
+      // the scaffolds in `failingScaffolds`. A fall may start or end at a
+      // scaffold placed (`kind` 'scaffold') or removed ('remove').
       (d) => {
         const toEnd = !/It stands again afterwards/.test(d.message || '');
-        const one = d.plank === d.until;
+        const kind = d.kind || 'plank', untilKind = d.untilKind || 'plank';
+        const one = d.move !== undefined ? d.move === d.untilMove : d.plank === d.until;
+        const name = (k, n, removed = []) => (k === 'remove' ? `le retrait ${etais(removed).replace(/^les /, 'des ').replace(/^l'/, "de l'")}` : the(k, n));
+        const first = name(kind, kind === 'scaffold' ? d.scaffold : d.plank, d.removed);
+        const last = () => name(untilKind, untilKind === 'scaffold' ? d.untilScaffold : d.until, d.untilRemoved || d.removed || []);
+        const de = (t) => t.replace(/^le /, 'du ').replace(/^la /, 'de la ').replace(/^l'/, "de l'");
+        const a = (t) => t.replace(/^le /, 'au ').replace(/^la /, 'à la ').replace(/^l'/, "à l'");
         const span = toEnd
-          ? (one ? `Quand la planchette ${d.plank} est posée` : `À partir de la planchette ${d.plank}`)
-          : (one ? `Tant que la planchette ${d.plank} est la dernière posée` : `De la planchette ${d.plank} à la planchette ${d.until}`);
-        const failing = d.failing || [];
+          ? (one ? (kind === 'remove' ? `Quand ${removedFr(d.removed)}` : `Quand ${the(kind, kind === 'scaffold' ? d.scaffold : d.plank)} est ${placed(kind)}`) : `À partir ${de(first)}`)
+          : (one ? (kind === 'remove' ? `Juste après ${a(first).replace(/^au /, 'le ')}` : `Tant que ${first} est ${kind === 'scaffold' ? 'le dernier posé' : 'la dernière posée'}`) : `${de(first).replace(/^d/, 'D')} ${a(last())}`);
+        const failing = d.failing || [], scaffolds = d.failingScaffolds || [];
         const who = failing.length
           ? (failing.length > 1 ? ` (les planchettes ${listOf(failing)} ne peuvent pas rester en équilibre)` : ` (la planchette ${failing[0]} ne peut pas rester en équilibre)`)
-          : '';
-        return `${span}, la construction tombe${who}.` + (toEnd ? '' : " Elle tient de nouveau ensuite : tenez-la, ou changez l'ordre de pose.");
+          : scaffolds.length ? ` (${etais(scaffolds)} ${scaffolds.length > 1 ? 'ne peuvent' : 'ne peut'} pas rester en équilibre)` : '';
+        return `${span}, la construction tombe${who}.` + (kind === 'remove' ? " Elle ne tient pas seule sans l'échafaudage." : '') +
+          (toEnd ? '' : " Elle tient de nouveau ensuite : tenez-la, ou changez l'ordre de pose.");
       },
     ],
     'I-fragile': [
@@ -368,7 +487,8 @@
     for (const rule of rules) {
       if (typeof rule === 'function') return { text: rule(d), exact: rules.length === 1 };
       const m = rule[0].exec(d.message || '');
-      if (m) return { text: rule[1](m, d), exact: true };
+      const text = m ? rule[1](m, d) : null;
+      if (text !== null) return { text, exact: true };
     }
     return { text: d.message, exact: false };
   }
