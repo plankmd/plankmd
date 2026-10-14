@@ -89,3 +89,31 @@ test('replay: a counterweight placed too late, the overhang falls first', { skip
   sim.free();
   assert.equal(result.fellAt && result.fellAt.n, 2);
 });
+
+const corbelText = (weights) => '```plank\nflat-y 0 0 0 repeat=4 offset=0,0,1\nflat-y 27 0 0 repeat=4 offset=0,0,1\n```\n\n' +
+  `\`\`\`plank\nscaffold flat-x 7.5 6 0 repeat=4 offset=0,0,1\nflat-x 0 6 4\nflat-x 15 6 4\nflat-y 0 0 5 repeat=${weights} offset=0,0,1\nflat-y 27 0 5 repeat=${weights} offset=0,0,1\n\`\`\`\n`;
+
+test('replay with scaffolds: the bridge stands through the build, and falls when too light', { skip }, async () => {
+  await ready;
+  const run = (weights) => {
+    const r = validate(corbelText(weights));
+    const sim = createDrop(R, r.planks, { replay: true, moves: r.moves });
+    const result = sim.run();
+    assert.equal(sim.events, r.moves.length);
+    sim.free();
+    return result;
+  };
+  assert.equal(run(5).stood, true);
+  const light = run(2);
+  assert.equal(light.stood, false);
+  assert.equal(light.fellAt.kind, 'remove');
+  assert.equal(light.fellAt.n, 14);
+});
+
+test('leaning planks: two leaning on each other stand, one alone falls', { skip }, async () => {
+  await ready;
+  const drop = (text) => { const sim = createDrop(R, validate(text).planks); const r = sim.run(); sim.free(); return r; };
+  assert.equal(drop('```plank\nup-y 0 0 0 lean=+x:10\nup-y 6.2 0 0 lean=-x:10\n```\n').stood, true);
+  assert.equal(drop('```plank\nflat-y 12 0 0 repeat=4 offset=0,0,1\n```\n\n```plank\nflat-x 0 0 0 lean=-x:18.4\n```\n').stood, true);
+  assert.equal(drop('```plank\nup-y 0 0 0 lean=+x:20\n```\n').stood, false);
+});
