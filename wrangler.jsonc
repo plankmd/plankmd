@@ -10,8 +10,7 @@
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash"
   },
-  // Pull requests get a preview: Workers Builds runs `npx wrangler preview`
-  // on other branches, which needs this block. Empty: a preview serves the
-  // same assets with the same settings as the site.
+  // Pull requests get a preview (`wrangler preview`), which needs this
+  // block even when empty: the assets above apply to previews too.
   "previews": {}
 }

@@ -100,7 +100,7 @@ export default defineConfig({
         nav: nav({ spec: 'Spec', player: 'Player', gallery: 'Gallery', use: 'Use it', llm: 'LLMs', changelog: 'Changelog', contributing: 'Contributing' }, ''),
         editLink: { pattern: editLinkPattern, text: 'Edit this page on GitHub' },
         footer: {
-          message: 'Specification and code under the MIT License. Models under CC0.',
+          message: 'PlankMD is created and maintained by <a href="https://empilo.app">Empilo.app</a>.<br>Specification and code under the MIT License. Models under CC0.',
           copyright: 'PlankMD contributors',
         },
       },
@@ -114,7 +114,7 @@ export default defineConfig({
         nav: nav({ spec: 'Spec', player: 'Lecteur', gallery: 'Galerie', use: 'Utiliser', llm: 'LLM', changelog: 'Historique', contributing: 'Contribuer' }, '/fr'),
         editLink: { pattern: editLinkPattern, text: 'Modifier cette page sur GitHub' },
         footer: {
-          message: 'Spécification et code sous licence MIT. Modèles sous CC0.',
+          message: 'PlankMD est créé et maintenu par <a href="https://empilo.app">Empilo.app</a>.<br>Spécification et code sous licence MIT. Modèles sous CC0.',
           copyright: 'Les contributeurs de PlankMD',
         },
         outline: { level: [2, 3], label: 'Sur cette page' },
