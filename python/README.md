@@ -48,7 +48,14 @@ per u, default 0.0078), `--density`, `--json`, `--verbose`.
 ## Model
 
 * **Blocks.** One compas `Block` per plank, from the `size` / `center` /
-  `rotation` of the expand JSON (box rotated about its own centre around z).
+  `axes` of the expand JSON: a box turned in space. Leaning planks (format
+  v0.2) touch the ground and each other along edges, which the interfaces
+  below do not find: such models come out as falling (the tent sample
+  does). Use the drop test for them.
+* **Scaffolds.** `--incremental` follows the moves of the expand JSON:
+  scaffold planks are blocks while they are in place, and every removal is
+  a check point. Without `--incremental`, the finished model has no
+  scaffold.
 * **Ground.** One fixed support block: a slab whose top is the plane z = 0,
   wider than the construction.
 * **Interfaces.** `assembly_interfaces_numpy` from compas_cra finds the
