@@ -31,6 +31,11 @@ a.card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover
 a.card div { padding: 8px 10px; }
 a.card b { display: block; }
 a.card span { color: var(--muted); font-size: 13px; }
+a.card[hidden] { display: none; }
+#tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; max-width: 1200px; margin: 0 auto; }
+#tags:empty { display: none; }
+#tags button { font: inherit; font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 2px 10px; cursor: pointer; }
+#tags button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -39,9 +44,10 @@ a.card span { color: var(--muted); font-size: 13px; }
     <h1 data-i18n="galleryHeading">PlankMD gallery</h1>
     <span class="lang" role="group" aria-label="Language" data-i18n-aria="language" data-lang-switch><button data-lang="en" lang="en" aria-pressed="true">EN</button><button data-lang="fr" lang="fr" aria-pressed="false">FR</button></span>
   </div>
-  <p id="intro" data-i18n="galleryIntro">Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. Click one to open it in the player.</p>
+  <p id="intro" data-i18n="galleryIntro">Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. The tent, made of leaning planks, is checked by the drop test only. Click one to open it in the player.</p>
   <p class="links"><a href="index.html" data-sibling="index.html" data-i18n="playerLink">Player</a> <a href="../SPEC.md" data-i18n="spec">Spec</a> <a href="https://plankmd.org" data-i18n-href="site">plankmd.org</a></p>
 </header>
+<div id="tags" role="group" aria-label="Filter by tag" data-i18n-aria="galleryTags"></div>
 <main id="grid"></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="i18n.js"></script>
@@ -64,7 +70,9 @@ function label(a, title, facts, result, name) {
   const tr = !github && result.meta.lang !== lang && (translations[name] || {})[lang];
   title.textContent = (tr && PlankMD.parse(tr).meta.title) || result.meta.title || name.split('/').pop();
   facts.textContent = [T.planks(result.planks.length), T.steps(result.steps.length)]
-    .concat(result.meta.difficulty ? [T.difficulty(result.meta.difficulty)] : []).join(', ');
+    .concat(result.meta.difficulty ? [T.difficulty(result.meta.difficulty)] : [])
+    .concat(result.meta.minutes ? [T.minutes(result.meta.minutes)] : [])
+    .concat(result.meta.author ? [T.by(result.meta.author)] : []).join(', ');
 }
 I18N.onSwitch((next) => {
   lang = next;
@@ -72,6 +80,7 @@ I18N.onSwitch((next) => {
   I18N.translatePage(lang);
   document.title = T.galleryTitle;
   for (const c of cards) label(...c);
+  showTags();
   if (github) introduce(introduce.last);
 });
 
@@ -95,7 +104,10 @@ function thumbnail(result) {
     const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: p.color, map: PlankMDWood.texture(THREE) }));
     // PlankMD (x, y, z) is (x, z, -y) in the scene.
     m.position.set(p.center[0], p.center[2], -p.center[1]);
-    m.rotation.y = (p.rotation * Math.PI) / 180;
+    // From the plank's axes, so that leaning planks lean.
+    const sc = (v) => new THREE.Vector3(v[0], v[2], -v[1]);
+    if (p.axes) m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(sc(p.axes[0]), sc(p.axes[2]), sc(p.axes[1]).negate()));
+    else m.rotation.y = (p.rotation * Math.PI) / 180;
     m.add(new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: 0x5a4630 })));
     group.add(m);
   }
@@ -104,7 +116,12 @@ function thumbnail(result) {
   const c = box.getCenter(new THREE.Vector3());
   const r = box.getSize(new THREE.Vector3()).length() * 0.85;
   const camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 5000);
-  camera.position.set(c.x + r * 0.85, c.y + r * 0.75, c.z + r * 1.05);
+  // From the model's view (docs/proposals/view.md), or from the front right.
+  const v = result.meta.view;
+  if (v) {
+    const az = (v.azimuth * Math.PI) / 180, el = (Math.min(89, v.elevation) * Math.PI) / 180;
+    camera.position.set(c.x + 1.52 * r * Math.sin(az) * Math.cos(el), c.y + 1.52 * r * Math.sin(el), c.z + 1.52 * r * Math.cos(az) * Math.cos(el));
+  } else camera.position.set(c.x + r * 0.85, c.y + r * 0.75, c.z + r * 1.05);
   camera.lookAt(c);
   renderer.render(scene, camera);
   return renderer.domElement.toDataURL('image/png');
@@ -112,14 +129,21 @@ function thumbnail(result) {
 
 const grid = document.getElementById('grid');
 
-function addCard(text, name) {
+// `file` is the model's entry in a GitHub listing: its photograph (`image`,
+// docs/proposals/metadata.md) is shown instead of the render when it has one.
+// Bundled models have no address to resolve a photograph against.
+function addCard(text, name, file) {
   const result = PlankMD.validate(text);
   if (!result.planks.length) return;
   const a = document.createElement('a');
   a.className = 'card';
+  a.dataset.tags = JSON.stringify(result.meta.tags || []);
   const img = document.createElement('img');
   img.alt = result.meta.title || name;
-  img.src = thumbnail(result);
+  const render = thumbnail(result);
+  const photo = file && result.meta.image ? GH.asset(file, result.meta.image) : null;
+  img.src = photo || render;
+  if (photo) img.onerror = () => { img.onerror = null; img.src = render; };
   const info = document.createElement('div');
   const title = document.createElement('b');
   const facts = document.createElement('span');
@@ -128,6 +152,28 @@ function addCard(text, name) {
   info.append(title, facts);
   a.append(img, info);
   grid.appendChild(a);
+}
+
+// A filter by tag, when the models have tags: one button per tag.
+let tagShown = null;
+function showTags() {
+  const box = document.getElementById('tags');
+  const all = new Map();
+  for (const [a] of cards) for (const t of JSON.parse(a.dataset.tags)) all.set(t, (all.get(t) || 0) + 1);
+  box.replaceChildren();
+  if (!all.size) return;
+  const button = (tag, text) => {
+    const b = document.createElement('button');
+    b.textContent = text;
+    b.setAttribute('aria-pressed', String(tagShown === tag));
+    b.addEventListener('click', () => { tagShown = tag; filter(); showTags(); });
+    box.append(b);
+  };
+  button(null, T.galleryAll);
+  for (const t of [...all.keys()].sort()) button(t, t);
+}
+function filter() {
+  for (const [a] of cards) a.hidden = tagShown !== null && !JSON.parse(a.dataset.tags).includes(tagShown);
 }
 
 // ?github=<address> (or ?repo=): the models of a GitHub repository, folder or
@@ -181,7 +227,8 @@ async function showGitHub() {
       try { texts[i] = await GH.text(github.files[i]); } catch { /* skipped: the player says why if it is opened */ }
     }
   }));
-  github.files.forEach((f, i) => { if (texts[i]) addCard(texts[i], f.path); });
+  github.files.forEach((f, i) => { if (texts[i]) addCard(texts[i], f.path, f); });
+  showTags();
 }
 
 if (github) {
@@ -190,6 +237,7 @@ if (github) {
   const all = window.PLANKMD_SAMPLES || {};
   const names = Object.keys(all).filter((n) => n.startsWith('gallery/')).concat(Object.keys(all).filter((n) => !n.startsWith('gallery/')));
   for (const name of names) addCard(all[name], name);
+  showTags();
   document.body.dataset.ready = 'true';
 }
 

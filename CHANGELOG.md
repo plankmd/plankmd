@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- Format v0.2 (`SPEC.md`, and the French spec on the website). Every v0.1
+  file stays valid and means the same.
+  - **Leaning planks**: `lean=<dir>:<degrees>` tips a plank over, pivoting on
+    the bottom edge of its box on that side. Overlaps and contacts that
+    involve a leaning plank are checked as boxes in space, within 0.2 u
+    (`E-lean`).
+  - **Scaffolds**: `scaffold` lines are temporary supports, placed whole and
+    removed at the end of their step or after the plank `until=` names.
+    Builds are a sequence of moves (`PlankMD.build()`, `result.moves`).
+    `W-scaffold-release`, `W-scaffold-floating`, `W-scaffold-wedged`;
+    `W-inventory` counts the planks in place at once.
+  - **View hints**: `view`, `zoom` and `focus` on a block's opening fence,
+    `view` in the frontmatter (`W-view`).
+  - **Metadata of shared models**: `url`, `based-on`, `date`, `image`, `tags`
+    and `minutes`, checked by `E-frontmatter`.
+- Balance check: follows the moves, with scaffolds as bodies while they are
+  in place and a check at every removal. Models with leaning planks are not
+  checked (`I-unchecked-lean`): the drop test is.
+- Drop test: planks turned in space; `--replay` puts scaffolds up and takes
+  them away.
+- Player: the plank slider goes through the moves, scaffolds in grey;
+  leaning planks; the camera turns to the author's views, with an
+  "Author's view" button; author, date, time, tags, links and, for a model
+  from the web, its photograph.
+- Booklet and video: step views, scaffolds with their instructions (sliding
+  out in the video), the model's photograph, author, license and address.
+- Gallery: thumbnails from the model's view, photographs of models from
+  GitHub, a filter by tag.
+- Samples: a bridge on a scaffold, and a tent of leaning planks.
+- LLM instructions: scaffolds, leaning planks, views and metadata.
+
 - Player and gallery: open the models of a GitHub repository, folder, file
   or gist, in the browser only (`?github=<address>`, or the short link
   `plankmd.org/p?repo=<address>`).

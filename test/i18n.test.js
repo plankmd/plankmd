@@ -94,3 +94,45 @@ test('the player strings use no long dashes', () => {
     assert.doesNotMatch(text, /[–—]/, f);
   }
 });
+
+test('the French explanations recognise the v0.2 messages: metadata, views, leaning planks, scaffolds', () => {
+  const fm = '---\nplankmd: "0.2"\ntitle: T\ninventory: 3\nurl: http://x\nbased-on: ftp://x\ndate: 2026-13-01\nimage: ../a.jpg\ntags: Castle\nminutes: -2\nview: sideways\n---\n\n';
+  const docs = [
+    fm + '```plank view=back,95 zoom=0 focus=Roof size=2 big\nflat-x 0 0 0 lean=+x:95 until=a\nflat-x 0 0 0 id=a\n```\n\n```plank focus=later\nflat-x 0 0 1\n```\n',
+    '```plank\nscaffold flat-x 0 0 0 id=s until=s\nscaffold flat-x 0 0 0 until=nope\nflat-x 0 0 1 id=s\n```\n',
+    '```plank\nflat-x 0 0 0 id=p\nscaffold flat-x 0 0 1 until=p\nflat-x 0 0 2\nscaffold flat-x 0 0 9\n```\n',
+    '```plank\nflat-x 0 0 0\nflat-x 30 0 0\nflat-x 15 -3 0\nflat-x 15 3 0\nscaffold flat-x 15 0 0\nflat-x 8 0 1\nflat-x 23 0 1\nscaffold flat-x 15 0 0 id=p\n```\n',
+    '---\nplankmd: "0.2"\ntitle: T\ninventory: 2\n---\n\n```plank\nscaffold flat-x 0 0 0 repeat=2 offset=0,0,1\nflat-x 0 0 2\n```\n',
+  ];
+  const seen = new Set();
+  for (const doc of docs) {
+    for (const d of validate(doc).diagnostics) {
+      const { text, exact } = I18N.explain(d, 'fr');
+      assert.ok(exact, `${d.code}: ${d.message}`);
+      assert.doesNotMatch(text.replace(/« [^»]* »/g, ''), /\b(plank|scaffold|must|expected|names)\b/, `${d.code}: ${text}`);
+      if (d.scaffold) assert.match(text, new RegExp(`étai ${d.scaffold}\\b`), text);
+      seen.add(d.code);
+    }
+  }
+  for (const code of ['E-frontmatter', 'W-view', 'E-lean', 'W-unknown-attribute', 'W-scaffold-release', 'W-scaffold-floating',
+    'W-scaffold-wedged', 'E-overlap', 'E-duplicate-id', 'W-floating', 'W-inventory']) assert.ok(seen.has(code), code);
+  const fr = (d) => I18N.explain(d, 'fr').text;
+  assert.equal(fr({ code: 'W-scaffold-floating', message: 'plank 3 ("flat-x 0 0 1") rests on nothing once scaffolds 1 to 4 are removed', plank: 3 }),
+    'La planchette 3 (« flat-x 0 0 1 ») ne repose plus sur rien quand les étais 1 à 4 sont retirés');
+  assert.equal(fr({ code: 'I-unchecked-lean', plank: 2, message: '' }),
+    "La vérification de l'équilibre ne sait pas encore traiter les planchettes inclinées (la planchette 2 est inclinée) : faites le test de chute pour voir si la construction tient.");
+});
+
+test('the balance diagnostics of scaffolds are explained from their fields', () => {
+  const fr = (d) => I18N.explain(d, 'fr').text;
+  assert.equal(fr({ code: 'I-unstable', kind: 'remove', untilKind: 'remove', move: 25, untilMove: 25, plank: 14, until: 14, removed: [1, 2, 3, 4], failing: [9, 10],
+    message: 'When scaffolds 1 to 4 are removed, the construction falls (planks 9, 10 cannot stay in balance). It does not stand on its own without the scaffolding.' }),
+  'Quand les étais 1 à 4 sont retirés, la construction tombe (les planchettes 9 et 10 ne peuvent pas rester en équilibre).' +
+    " Elle ne tient pas seule sans l'échafaudage.");
+  assert.equal(fr({ code: 'I-unstable', kind: 'scaffold', untilKind: 'plank', move: 3, untilMove: 6, scaffold: 1, plank: 2, until: 4, failing: [], failingScaffolds: [1],
+    message: 'From scaffold 1 to plank 4, the construction falls (scaffold 1 cannot stay in balance). It stands again afterwards: hold it, or change the placement order.' }),
+  "De l'étai 1 à la planchette 4, la construction tombe (l'étai 1 ne peut pas rester en équilibre). Elle tient de nouveau ensuite : tenez-la, ou changez l'ordre de pose.");
+  assert.equal(fr({ code: 'I-unstable', kind: 'plank', untilKind: 'remove', move: 3, untilMove: 6, plank: 2, until: 4, untilRemoved: [2], failing: [2],
+    message: 'From plank 2 to the removal of scaffold 2, the construction falls. It stands again afterwards: hold it, or change the placement order.' }),
+  "De la planchette 2 au retrait de l'étai 2, la construction tombe (la planchette 2 ne peut pas rester en équilibre). Elle tient de nouveau ensuite : tenez-la, ou changez l'ordre de pose.");
+});

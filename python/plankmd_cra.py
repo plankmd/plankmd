@@ -95,9 +95,13 @@ def build_assembly(planks, unit=UNIT):
     assembly.set_boundary_conditions([0])
 
     for i, p in enumerate(planks, start=1):
-        a = math.radians(p.get("rotation") or 0.0)
         c = [v * unit for v in p["center"]]
-        frame = Frame(c, [math.cos(a), math.sin(a), 0], [-math.sin(a), math.cos(a), 0])
+        if p.get("axes"):
+            # The box's own axes: planks turned by rot, and leaning planks.
+            frame = Frame(c, p["axes"][0], p["axes"][1])
+        else:
+            a = math.radians(p.get("rotation") or 0.0)
+            frame = Frame(c, [math.cos(a), math.sin(a), 0], [-math.sin(a), math.cos(a), 0])
         sx, sy, sz = (v * unit for v in p["size"])
         assembly.add_block(Block.from_shape(Box(sx, sy, sz, frame=frame)), node=i)
     return assembly
@@ -158,14 +162,30 @@ def check(path, method="cra", mu=MU, unit=UNIT, incremental=False, verbose=False
     planks = doc["planks"]
     result = {"file": path, "planks": len(planks)}
     if incremental:
-        failed_at = None
-        for n in range(1, len(planks) + 1):
-            ok, status = solve(planks[:n], method, mu, unit, verbose, density)
+        # Follow the moves: scaffold planks are in place until they are removed.
+        scaffolds = doc.get("scaffolds", [])
+        moves = doc.get("moves") or [{"move": n, "kind": "plank", "n": n} for n in range(1, len(planks) + 1)]
+        present, failed_at, failed_move = [], None, None
+        for m in moves:
+            if m["kind"] == "plank":
+                present.append(planks[m["n"] - 1])
+            elif m["kind"] == "scaffold":
+                present.append(scaffolds[m["s"] - 1])
+            else:
+                gone = {id(scaffolds[s - 1]) for s in m["s"]}
+                present = [p for p in present if id(p) not in gone]
+            ok, status = solve(present, method, mu, unit, verbose, density)
             if not ok:
-                failed_at = n
+                failed_move = m
+                failed_at = sum(1 for x in moves[:m["move"]] if x["kind"] == "plank")
                 break
-        result.update(verdict=failed_at is None, status="after every placement" if failed_at is None
-                      else "first fails at plank %d: %s" % (failed_at, status), failed_at=failed_at)
+        where = None
+        if failed_move is not None:
+            where = ("plank %d" % failed_move["n"] if failed_move["kind"] == "plank"
+                     else "scaffold %d" % failed_move["s"] if failed_move["kind"] == "scaffold"
+                     else "the removal of scaffolds %s" % ", ".join(map(str, failed_move["s"])))
+        result.update(verdict=failed_at is None, status="after every placement" if failed_move is None
+                      else "first fails at %s: %s" % (where, status), failed_at=failed_at)
         if failed_at is None:
             result["verdict"] = True
     else:

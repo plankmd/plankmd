@@ -69,7 +69,9 @@ plat le long de `x` ; les trois nombres sont son coin. Le texte du livret peut
 
 ## Ce que vous trouverez ici
 
-- **[La spécification](/fr/spec)**, PlankMD v0.1 (brouillon).
+- **[La spécification](/fr/spec)**, PlankMD v0.2 (brouillon) : planchettes
+  couchées, debout ou inclinées, gabarits qui mesurent les écarts, étais qui
+  portent ce qui ne tient pas encore, et les vues d'où montrer chaque étape.
 - **[Un lecteur 3D](/player/?lang=fr){target="_self"}**, en français ou en
   anglais : étapes, montage planchette par planchette, édition en direct,
   diagnostics, calcul d'équilibre et test de chute. Collez ou déposez un

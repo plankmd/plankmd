@@ -102,6 +102,16 @@ the optional solvers, which load from a CDN.
 
 You can also paste a model into the source panel, or drop a file on the scene.
 
+The player follows the builder's moves: the plank slider also stops on each
+scaffold plank and on each removal of scaffolds, drawn in grey. Leaning planks
+are drawn as they lean; the balance check skips them, so use the drop test,
+which replays scaffolds going up and coming away too. When the author gave
+views (`view=` on a step), the camera turns to them as the steps change, and
+the *Author's view* button turns it back. The model's author, license, date,
+time, tags, and the links of `url` and `based-on` are shown under its title;
+its photograph (`image`) only when the model came from the web
+(`?src=`, `?repo=`).
+
 ## Booklets and videos
 
 Every model can become a printable building booklet and a building video,
@@ -109,8 +119,8 @@ in the browser, from the links at the bottom of the player:
 
 | Page | What it makes |
 |---|---|
-| `/player/booklet.html#<sample>` | An A4 booklet: a cover, then each step with its instructions, a large view and small views of the order of its planks. Print it, or save it as PDF. |
-| `/player/video.html#<sample>` | A building video: a title, each step's card, the planks dropping in one by one. Play it, or record it (MP4 or WebM, depending on the browser). |
+| `/player/booklet.html#<sample>` | An A4 booklet: a cover (with the model's photograph, author, license and address), then each step with its instructions, a large view from the step's own view and small views of the order of its planks. Scaffolds are drawn in grey, with the instructions to put them up and take them away. Print it, or save it as PDF. |
+| `/player/video.html#<sample>` | A building video: a title, each step's card, the planks dropping in one by one, scaffolds sliding out. The camera turns around the model from the model's view, and swings to a step's view while that step is built. Play it, or record it (MP4 or WebM, depending on the browser). |
 
 Both take the same addresses as the player (`?src=<url>`, `#code=<base64url>`)
 and `?lang=fr`. In another language (`?lang=fr`, `--lang fr`), the texts come
@@ -144,6 +154,13 @@ repository in the player.
 Everything happens in the visitor's browser: the files are read from GitHub
 directly, nothing is stored by plankmd.org. GitHub allows 60 listings an hour
 per visitor without an account; files themselves are not limited.
+
+Give your models the [metadata of shared models](/spec#metadata-of-shared-models):
+`author`, `license`, `date`, and `url` pointing back to where you publish
+them. Put a photograph of the built model next to the file and name it in
+`image: castle.jpg`: the gallery shows it on the model's card, the player
+under its title, and the booklet on its cover. In a gist, the photograph is
+a file of the same gist. `tags` add a filter to the gallery.
 
 ## Source
 

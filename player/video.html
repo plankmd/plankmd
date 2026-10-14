@@ -55,12 +55,14 @@ const LANG = params.get('lang') === 'fr' ? 'fr' : 'en';
 const TEXT = {
   en: { planks: (n) => `${n} plank${n === 1 ? '' : 's'}`, steps: (n) => `${n} step${n === 1 ? '' : 's'}`, difficulty: (d) => `difficulty ${d}/5`,
     step: (k, n) => `Step ${k} of ${n}`, plank: (k, n) => `Plank ${k} / ${n}`, buildIt: 'Build it yourself', guide: 'Blue planks are guides: lay them to measure the gap, then take them away.',
+    scaffold: 'Grey planks are a scaffold: they hold the planks above while they go on, then come away.', takeAway: 'Take the scaffold away', by: (a) => `by ${a}`,
     // The page around the video.
     pageTitle: 'PlankMD Video', play: 'Play', pause: 'Pause', record: 'Record a video', time: 'Time', format: 'Format', shorts: 'Shorts',
     cannotRecord: 'This browser cannot record: use scripts/video.js.', recording: 'Recording…', saved: (f) => `Saved ${f}.`, player: 'Player',
     about: 'A building video of a PlankMD model. Open it with the same addresses as the player: <code>video.html#corbel-bridge</code>, <code>video.html?src=&lt;url&gt;</code>. Record it here in real time, or render an MP4 frame by frame with <code>node scripts/video.js model.plank.md</code>.' },
   fr: { planks: (n) => `${n} planchette${n > 1 ? 's' : ''}`, steps: (n) => `${n} étape${n > 1 ? 's' : ''}`, difficulty: (d) => `difficulté ${d}/5`,
     step: (k, n) => `Étape ${k} sur ${n}`, plank: (k, n) => `Planchette ${k} / ${n}`, buildIt: 'À vous de le construire', guide: "Les planchettes bleues sont des gabarits : posez-les pour mesurer l'écart, puis retirez-les.",
+    scaffold: "Les planchettes grises sont des étais : ils portent les planchettes du dessus pendant la pose, puis on les retire.", takeAway: "Retirez l'échafaudage", by: (a) => `par ${a}`,
     pageTitle: 'Vidéo PlankMD', play: 'Lecture', pause: 'Pause', record: 'Enregistrer une vidéo', time: 'Temps', format: 'Format', shorts: 'Shorts',
     cannotRecord: "Ce navigateur ne sait pas enregistrer : utilisez scripts/video.js.", recording: 'Enregistrement…', saved: (f) => `${f} enregistrée.`, player: 'Lecteur',
     about: "Une vidéo de construction d'un modèle PlankMD. Elle s'ouvre avec les mêmes adresses que le lecteur : <code>video.html#corbel-bridge</code>, <code>video.html?src=&lt;url&gt;</code>. Enregistrez-la ici en temps réel, ou produisez un MP4 image par image avec <code>node scripts/video.js modele.plank.md --lang fr</code>." },
@@ -93,9 +95,11 @@ function setFormat(name) {
 
 // --------------------------------------------------------------- timeline
 // intro (title over the turning model), then for each step a title card and
-// its planks one by one, then an outro. Long models go faster per plank.
+// its moves one by one (planks, scaffold planks, and the scaffolds taken
+// away), then an outro. Long models go faster per plank.
 function plan(result) {
-  const n = result.planks.length;
+  const moves = result.moves;
+  const n = moves.length;
   const build = Math.min(80, Math.max(20, n * 0.3));
   const per = build / Math.max(1, n);
   const segments = [];
@@ -103,13 +107,37 @@ function plan(result) {
   const push = (kind, duration, extra) => { segments.push({ kind, start: t, end: t + duration, ...extra }); t += duration; };
   push('intro', 4);
   for (const step of result.steps) {
-    const own = result.planks.filter((p) => p.step === step.number);
+    const own = moves.filter((m) => m.step === step.number);
     const guides = result.guides.some((g) => g.step === step.number);
-    push('card', guides ? 3 : 2, { step });
-    if (own.length) push('build', own.length * per, { step, first: own[0].n, last: own[own.length - 1].n });
+    const scaffolds = own.some((m) => m.kind === 'scaffold');
+    push('card', guides || scaffolds ? 3 : 2, { step });
+    for (const m of own) push(m.kind === 'remove' ? 'remove' : 'build', m.kind === 'remove' ? Math.max(1.5, per * 2) : per, { step, move: m });
   }
   push('outro', 5);
   return { segments, duration: t, per };
+}
+
+// The camera turns around the model once, starting and ending at the model's
+// view; it swings to a step's own view while that step is built
+// (docs/proposals/view.md).
+function cameraAt(t) {
+  const { segments, duration } = timeline;
+  const base = model.meta.view || { azimuth: 30, elevation: 26 };
+  let azimuth = base.azimuth + (t / duration) * 360;
+  let elevation = base.elevation;
+  for (const step of model.steps) {
+    if (!step.view || step.view.azimuth === undefined) continue;
+    const own = segments.filter((x) => x.step === step);
+    if (!own.length) continue;
+    const start = own[0].start, end = own[own.length - 1].end;
+    const w = Math.min(ease((t - start) / 1.2), ease((end + 1.2 - t) / 1.2));
+    if (w <= 0) continue;
+    // The shortest way round to the step's direction.
+    const d = ((((step.view.azimuth - azimuth) % 360) + 540) % 360) - 180;
+    azimuth += d * w;
+    elevation += (step.view.elevation - elevation) * w;
+  }
+  return { azimuth, elevation };
 }
 
 // ------------------------------------------------------------------ frame
@@ -118,34 +146,39 @@ const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
 function frame(t) {
   const { segments, duration } = timeline;
   const seg = segments.find((s) => t < s.end) || segments[segments.length - 1];
-  const azimuth = 30 + (t / duration) * 300;
   // A little higher than the middle: the captions are at the bottom.
-  const view = { azimuth, elevation: 26, zoom: 0.95, shift: W > H ? 0.06 : 0.1 };
-  const total = model.planks.length;
+  const view = { ...cameraAt(t), zoom: 0.95, shift: W > H ? 0.06 : 0.1 };
+  const moves = model.moves;
   if (seg.kind === 'intro' || seg.kind === 'outro') {
-    view.upTo = total;
+    view.move = moves.length;
   } else if (seg.kind === 'card') {
-    view.upTo = seg.step.number === 1 ? 0 : lastOf(seg.step.number - 1);
+    view.move = lastOf(seg.step.number - 1);
+    view.step = seg.step.number;
+  } else if (seg.kind === 'remove') {
+    // The scaffolds slide out, then are gone.
+    view.move = seg.move.index - 1;
+    view.removing = { move: seg.move.index, t: ease((t - seg.start) / (seg.end - seg.start)) };
     view.step = seg.step.number;
   } else {
-    const count = seg.last - seg.first + 1;
-    const x = ((t - seg.start) / (seg.end - seg.start)) * count; // planks placed so far, with the fraction of the next one
-    const k = Math.min(count, Math.floor(x) + 1);
-    view.upTo = seg.first + k - 1;
+    const m = seg.move;
+    const x = (t - seg.start) / (seg.end - seg.start); // the fraction of the move done
+    view.move = m.index;
     view.step = seg.step.number;
-    view.lit = view.upTo;
-    view.drop = { n: view.upTo, t: ease((x - (k - 1)) / 0.7) };
+    if (m.kind === 'plank') { view.lit = m.plank.n; view.drop = { n: m.plank.n, t: ease(x / 0.7) }; }
+    else { view.litScaffold = m.scaffold.s; view.dropScaffold = { s: m.scaffold.s, t: ease(x / 0.7) }; }
   }
   ctx.drawImage(render.draw(view), 0, 0);
   overlay(seg, t, view);
   return out;
 }
 
+// The last move of a step and the ones before it (0 before the first step).
 function lastOf(stepNumber) {
-  let n = 0;
-  for (const p of model.planks) if (p.step <= stepNumber) n = p.n;
-  return n;
+  let k = 0;
+  for (const m of model.moves) if (m.step <= stepNumber) k = m.index;
+  return k;
 }
+const planksBy = (move) => model.moves.slice(0, move).filter((m) => m.kind === 'plank').length;
 
 // --------------------------------------------------------------- overlays
 const pad = () => Math.round(Math.min(W, H) * 0.045);
@@ -189,7 +222,7 @@ function overlay(seg, t, view) {
     const title = meta.title || 'PlankMD';
     font(Math.min(W, H) * 0.075, 750);
     const facts = [TEXT.planks(model.planks.length), TEXT.steps(model.steps.length)].concat(meta.difficulty ? [TEXT.difficulty(meta.difficulty)] : []).join(', ');
-    const sub = seg.kind === 'outro' ? `${TEXT.buildIt}: plankmd.org` : facts;
+    const sub = seg.kind === 'outro' ? `${TEXT.buildIt}: ${meta.url ? meta.url.replace(/^https:\/\//, '') : 'plankmd.org'}` : facts;
     const tw = ctx.measureText(title).width;
     font(Math.min(W, H) * 0.034, 500);
     const sw = ctx.measureText(sub).width;
@@ -203,10 +236,12 @@ function overlay(seg, t, view) {
     font(Math.min(W, H) * 0.034, 500);
     ctx.fillStyle = '#e0a75e';
     ctx.fillText(sub, p * 2, p * 1.8 + Math.min(W, H) * 0.075 * 1.15);
-    if (seg.kind === 'outro' && meta.license) {
+    // The end card credits the model: author and license.
+    const credit = [meta.author ? TEXT.by(meta.author) : '', meta.license || ''].filter(Boolean).join(', ');
+    if (seg.kind === 'outro' && credit) {
       font(Math.min(W, H) * 0.022, 500);
       ctx.fillStyle = '#a59c8f';
-      ctx.fillText(meta.license, p * 2, p * 1.8 + Math.min(W, H) * 0.075 * 1.15 + Math.min(W, H) * 0.045);
+      ctx.fillText(credit, p * 2, p * 1.8 + Math.min(W, H) * 0.075 * 1.15 + Math.min(W, H) * 0.045);
     }
     ctx.globalAlpha = 1;
     return;
@@ -224,10 +259,15 @@ function overlay(seg, t, view) {
   let bodyLines = [];
   const card = seg.kind === 'card';
   const guides = card && model.guides.some((g) => g.step === step.number);
+  const scaffolds = card && model.moves.some((m) => m.kind === 'scaffold' && m.step === step.number);
   if (card) {
     font(Math.min(W, H) * 0.027, 450);
     bodyLines = wrap(step.text || '', maxW - p * 2, W > H ? 4 : 7);
     if (guides) bodyLines = bodyLines.concat(wrap(TEXT.guide, maxW - p * 2, 2).map((l) => ({ guide: l })));
+    if (scaffolds) bodyLines = bodyLines.concat(wrap(TEXT.scaffold, maxW - p * 2, 2).map((l) => ({ scaffold: l })));
+  } else if (seg.kind === 'remove') {
+    font(Math.min(W, H) * 0.027, 450);
+    bodyLines = [{ scaffold: TEXT.takeAway }];
   }
   const lh1 = Math.min(W, H) * 0.042 * 1.2, lh2 = Math.min(W, H) * 0.027 * 1.4;
   const h = p * 1.6 + Math.min(W, H) * 0.026 * 1.5 + titleLines.length * lh1 + (bodyLines.length ? p * 0.4 + bodyLines.length * lh2 : 0);
@@ -249,15 +289,15 @@ function overlay(seg, t, view) {
     ctx.globalAlpha = a;
     font(Math.min(W, H) * 0.027, 450);
     for (const l of bodyLines) {
-      ctx.fillStyle = typeof l === 'string' ? '#d9d2c5' : '#8fb2e3';
-      ctx.fillText(typeof l === 'string' ? l : l.guide, p * 2, yy);
+      ctx.fillStyle = typeof l === 'string' ? '#d9d2c5' : l.guide ? '#8fb2e3' : '#b8c2cc';
+      ctx.fillText(typeof l === 'string' ? l : l.guide || l.scaffold, p * 2, yy);
       yy += lh2;
     }
     ctx.globalAlpha = 1;
   }
   // Plank counter.
   if (!card) {
-    const text = TEXT.plank(view.upTo, model.planks.length);
+    const text = TEXT.plank(planksBy(view.move), model.planks.length);
     font(Math.min(W, H) * 0.03, 650);
     const tw = ctx.measureText(text).width;
     panel(W - p - tw - p * 1.2, p, tw + p * 1.2, Math.min(W, H) * 0.03 + p * 0.9, 1);

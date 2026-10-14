@@ -16,7 +16,13 @@ node bin/plankmd.js validate model.plank.md --physics
 ```
 
 `--physics` also checks that the construction stands after every plank, and
-reports how much tilt it withstands: aim for at least 5°.
+reports how much tilt it withstands: aim for at least 5°. For a model with
+leaning planks, which the balance check does not model, run the drop test
+instead:
+
+```bash
+node bin/plankmd.js drop model.plank.md --replay
+```
 
 ---
 
@@ -52,11 +58,16 @@ instruction booklet for a child or an adult builder.
 
 ````markdown
 ---
-plankmd: "0.1"
+plankmd: "0.2"
 title: <short name>
 lang: en
 inventory: <a round number at or above the plank count>
 difficulty: <1 to 5>
+author: <the name the user gave, or leave the line out>
+license: CC0-1.0
+date: <today, YYYY-MM-DD>
+tags: [<three to five lower-case words>]
+minutes: <about how long the build takes>
 palette:
   <name>: "<hex color>"
 ---
@@ -81,9 +92,13 @@ palette:
 - `#` starts a comment. Use comments to label layers (`# layer 3, z = 2`).
 - Attributes: `color=<palette name or CSS color>`, `id=<slug>`,
   `repeat=<n> offset=<dx>,<dy>,<dz>`, `rot=<degrees>`,
-  `rot-step=<degrees>`, `pivot=<px>,<py>`. Rotations turn around a vertical
-  axis, counter-clockwise seen from above, around the plank's centre or around
-  `pivot`.
+  `rot-step=<degrees>`, `pivot=<px>,<py>`, `lean=<dir>:<degrees>`. Rotations
+  turn around a vertical axis, counter-clockwise seen from above, around the
+  plank's centre or around `pivot`. `lean` tips a plank over (see below).
+- Metadata: put the author's name in `author` only if the user gave it,
+  `license: CC0-1.0` unless told otherwise, today's date in `date`, three to
+  five words in `tags`. Never invent `url`, `based-on` or `image`: leave them
+  out unless the user gives them.
 
 ### Placement order: write the planks in the order they are placed
 
@@ -124,6 +139,72 @@ flat-x 0 12 0
 The validator then checks your gaps too: a guide that goes through a plank
 means the gap is too small (`E-guide-overlap`), a chain that touches only
 one plank means it is too wide or misplaced (`W-guide-loose`).
+
+### Scaffolds: hold up what cannot stand yet
+
+Two beams that meet over a gap tip over until their counterweights are on.
+Builders put a temporary stack under them first, then slide it out. Write
+that stack as a **scaffold**: a line starting with `scaffold`.
+
+````markdown
+## Step 2: the span
+
+Build a stack of four planks in the middle of the gap: the scaffold. Lay a
+beam from each pier, meeting over it, weigh their outer ends down with five
+planks each, then slide the scaffold out.
+
+```plank
+scaffold flat-x 7.5 6 0 repeat=4 offset=0,0,1
+flat-x 0 6 4
+flat-x 15 6 4
+flat-y 0 0 5 repeat=5 offset=0,0,1
+flat-y 27 0 5 repeat=5 offset=0,0,1
+```
+````
+
+- A scaffold line is placed whole, all its repetitions in a row, at its
+  place in the step. Put it first in the step, under what it will carry.
+- It holds planks up, needs support itself, and is removed at the end of its
+  step. `until=<id>` removes it right after the plank with that id instead.
+- Once it is removed, everything must stand without it: check the
+  counterweights. And leave it a free side to slide out by.
+- Scaffold planks have no plank number and are drawn grey. They count
+  towards `inventory` while they are in place.
+- Use a scaffold only when no placement order avoids it: beams that meet,
+  arches, wide lintels. A wall never needs one. Say in the text what it is
+  for and when it comes away.
+
+### Leaning planks
+
+`lean=<dir>:<degrees>` tips a plank over towards `+x`, `-x`, `+y` or `-y`,
+pivoting on the bottom edge of its box on that side; the angle is between 0
+and 90. The position is the box **before** the lean. A lying plank tipped
+towards `-x` lifts its `+x` end: a ramp. A standing plank tipped towards
+`+x` leans its top over.
+
+```plank
+up-y 0 0 0   lean=+x:10
+up-y 6.2 0 0 lean=-x:10
+```
+
+- A leaning plank must rest on something: two leaning planks against each
+  other, the edge of a step, a wall. Compute the angle from the geometry: a
+  ramp whose foot is `d` from a step `h` high leans by `atan(h / d)`. Contacts
+  are accepted within 0.2 u, so round to a tenth of a degree.
+- A leaning plank alone falls. The balance check does not model leaning
+  planks: check them with the drop test.
+- Use them for roofs, ramps and tents. Never for a plank that could lie flat.
+
+### Views: show each step from where it can be seen
+
+Pictures of the model are taken from the front right, a little above. When
+the planks of a step go on inside walls or at the back, add a view to the
+step's fence: ` ```plank view=back-left,20 `. Directions: `front`, `back`,
+`left`, `right`, `front-left`, `front-right`, `back-left`, `back-right`,
+`top`, or an azimuth in degrees; then an optional elevation (0 to 90).
+`zoom=2` comes closer and `focus=step` centres the picture on the planks of
+the step. `view: <direction>,<elevation>` in the frontmatter sets the view of
+the whole model. Add views only where the default hides something.
 
 ### Rules every model must follow
 
@@ -244,5 +325,10 @@ it. `E-overlap` names the plank it goes through: recompute both boxes.
 plank on: reduce the overhang, add a counterweight at the back, or place the
 counterweight earlier. `I-fragile` means it stands but barely.
 `E-guide-overlap` and `W-guide-loose` mean a gap is wrong: fix the planks, not
-the guide, unless the guide measures the wrong distance. Fix the file and
-output it again in full.
+the guide, unless the guide measures the wrong distance.
+`W-scaffold-floating` means a plank still needed its scaffold when it was
+removed: add counterweights, or remove the scaffold later with `until`.
+`W-scaffold-wedged` means the scaffold cannot slide out: leave one side
+free. `E-lean` is a malformed `lean`, `W-view` a malformed view.
+`I-unchecked-lean` means the balance check skipped a model with leaning
+planks: rely on the drop test. Fix the file and output it again in full.
