@@ -88,25 +88,37 @@ async function init() {
   }
   const box = new THREE.Box3()
   const meshes: any[] = []
-  const add = (p: any, guide: boolean) => {
+  // Scaffold planks (grey) are drawn as ghosts at rest: they are gone once
+  // the model is built. The placement order shows them going up and away.
+  const scaffoldSolid = new THREE.MeshStandardMaterial({ color: 0x9aa5b1, roughness: 0.9 })
+  const scaffoldGhost = new THREE.MeshBasicMaterial({ color: 0x8d99a6, transparent: true, opacity: 0.25, depthWrite: false })
+  const add = (p: any, kind: 'plank' | 'guide' | 'scaffold') => {
     const geo = new THREE.BoxGeometry(p.size[0], p.size[1], p.size[2])
-    const mat = guide
+    const mat = kind === 'guide'
       ? new THREE.MeshBasicMaterial({ color: 0x5b8fd9, transparent: true, opacity: 0.18, depthWrite: false })
-      : new THREE.MeshStandardMaterial({ color: colour(p.color), roughness: 0.85 })
+      : kind === 'scaffold' ? scaffoldGhost
+        : new THREE.MeshStandardMaterial({ color: colour(p.color), roughness: 0.85 })
     const mesh = new THREE.Mesh(geo, mat)
     mesh.position.set(p.center[0], p.center[1], p.center[2])
-    mesh.rotation.z = THREE.MathUtils.degToRad(p.rotation || 0)
+    // The plank's own axes: leaning planks lean.
+    if (p.axes) mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(...p.axes.map((a: number[]) => new THREE.Vector3(...a))))
+    else mesh.rotation.z = THREE.MathUtils.degToRad(p.rotation || 0)
     const edges = new THREE.LineSegments(
       new THREE.EdgesGeometry(geo),
-      new THREE.LineBasicMaterial({ color: guide ? 0x3d73c4 : 0x6b4a1f, transparent: true, opacity: guide ? 0.9 : 0.55 }),
+      new THREE.LineBasicMaterial({ color: kind === 'guide' ? 0x3d73c4 : kind === 'scaffold' ? 0x4a5560 : 0x6b4a1f, transparent: true, opacity: kind === 'plank' ? 0.55 : 0.9 }),
     )
     mesh.add(edges)
     scene.add(mesh)
     box.expandByObject(mesh)
-    if (!guide) meshes.push(mesh)
+    if (kind !== 'guide') byPlank.set(p, mesh)
+    if (kind === 'plank') meshes.push(mesh)
   }
-  planks.forEach((p) => add(p, false))
-  guides.forEach((g) => add(g, true))
+  const byPlank = new Map<any, any>()
+  planks.forEach((p) => add(p, 'plank'))
+  ;((result.scaffolds as any[]) || []).forEach((r) => add(r, 'scaffold'))
+  guides.forEach((g) => add(g, 'guide'))
+  // What the placement order plays: the moves of the builder.
+  const moves = (result.moves as any[]) || planks.map((p) => ({ kind: 'plank', plank: p }))
 
   // A faint ground, just under the model.
   const size = box.getSize(new THREE.Vector3())
@@ -143,9 +155,12 @@ async function init() {
 
   // Placement order: show the planks one by one, in the order of the file.
   let timer: number | undefined
+  const atRest = () => {
+    byPlank.forEach((m, p) => { m.visible = true; if (p.scaffold) m.material = scaffoldGhost })
+  }
   stop = () => {
     clearInterval(timer)
-    meshes.forEach((m) => { m.visible = true })
+    atRest()
     playing.value = false
     status.value = ''
     render()
@@ -153,22 +168,27 @@ async function init() {
   play = () => {
     if (playing.value) return stop!()
     playing.value = true
-    let shown = 0
-    meshes.forEach((m) => { m.visible = false })
+    let done = 0, placed = 0
+    byPlank.forEach((m, p) => { m.visible = false; if (p.scaffold) m.material = scaffoldSolid })
     const step = () => {
-      if (shown >= meshes.length) {
+      if (done >= moves.length) {
         clearInterval(timer)
+        atRest()
         playing.value = false
         status.value = ''
+        render()
         return
       }
-      meshes[shown].visible = true
-      shown += 1
-      status.value = `${t.value.plank} ${shown}/${meshes.length}`
+      const m = moves[done]
+      if (m.kind === 'remove') for (const r of m.scaffolds) byPlank.get(r).visible = false
+      else byPlank.get(m.plank || m.scaffold).visible = true
+      if (m.kind === 'plank') placed += 1
+      done += 1
+      status.value = `${t.value.plank} ${placed}/${meshes.length}`
       render()
     }
     step()
-    timer = window.setInterval(step, Math.max(60, Math.min(450, 4000 / meshes.length)))
+    timer = window.setInterval(step, Math.max(60, Math.min(450, 4000 / moves.length)))
   }
 
   cleanup = () => {

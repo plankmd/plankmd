@@ -109,6 +109,17 @@ code et les mêmes numéros de ligne et de planchette qu'en ligne de commande.
 Vous pouvez aussi coller un modèle dans le panneau de source, ou déposer un
 fichier sur la scène.
 
+Le lecteur suit les gestes du constructeur : le curseur des planchettes
+s'arrête aussi sur chaque étai et sur chaque retrait d'étais, dessinés en
+gris. Les planchettes inclinées sont dessinées inclinées ; le calcul
+d'équilibre ne les traite pas, utilisez donc le test de chute, qui rejoue lui
+aussi la pose et le retrait des étais. Quand l'auteur a donné des vues
+(`view=` sur une étape), la caméra s'y tourne quand l'étape change, et le
+bouton *Vue de l'auteur* l'y ramène. L'auteur du modèle, sa licence, sa
+date, sa durée, ses mots-clés et les liens de `url` et `based-on`
+s'affichent sous son titre ; sa photo (`image`) seulement si le modèle vient
+du web (`?src=`, `?repo=`).
+
 ## Notices et vidéos
 
 Chaque modèle peut devenir une notice de montage à imprimer et une vidéo de
@@ -116,8 +127,8 @@ construction, dans le navigateur, depuis les liens en bas du lecteur :
 
 | Page | Ce qu'elle produit |
 |---|---|
-| `/player/booklet.html#<exemple>` | Une notice A4 : une couverture, puis chaque étape avec ses instructions, une grande vue et de petites vues de l'ordre de pose. Imprimez-la, ou enregistrez-la en PDF. |
-| `/player/video.html#<exemple>` | Une vidéo de construction : un titre, la carte de chaque étape, les planchettes qui se posent une à une. Lisez-la, ou enregistrez-la (MP4 ou WebM selon le navigateur). |
+| `/player/booklet.html#<exemple>` | Une notice A4 : une couverture (avec la photo du modèle, son auteur, sa licence et son adresse), puis chaque étape avec ses instructions, une grande vue prise du point de vue de l'étape et de petites vues de l'ordre de pose. Les étais sont dessinés en gris, avec les consignes pour les poser et les retirer. Imprimez-la, ou enregistrez-la en PDF. |
+| `/player/video.html#<exemple>` | Une vidéo de construction : un titre, la carte de chaque étape, les planchettes qui se posent une à une, les étais qui glissent dehors. La caméra tourne autour du modèle depuis la vue du modèle, et pivote vers la vue d'une étape pendant qu'on la construit. Lisez-la, ou enregistrez-la (MP4 ou WebM selon le navigateur). |
 
 Les deux pages acceptent les mêmes adresses que le lecteur (`?src=<url>`,
 `#code=<base64url>`) et `?lang=fr`. En français (`?lang=fr`, `--lang fr`), les
@@ -155,6 +166,14 @@ Tout se passe dans le navigateur du visiteur : les fichiers sont lus
 directement sur GitHub, plankmd.org ne stocke rien. Sans compte, GitHub
 autorise 60 listes de dépôt par heure et par visiteur ; les fichiers
 eux-mêmes ne sont pas limités.
+
+Donnez à vos modèles les
+[métadonnées des modèles partagés](/fr/spec#metadonnees-des-modeles-partages) :
+`author`, `license`, `date`, et `url` qui renvoie là où vous les publiez.
+Mettez une photo du modèle construit à côté du fichier et nommez-la dans
+`image: chateau.jpg` : la galerie la montre sur la carte du modèle, le
+lecteur sous son titre, et la notice sur sa couverture. Dans un gist, la
+photo est un fichier du même gist. `tags` ajoute un filtre à la galerie.
 
 ## Le code source
 

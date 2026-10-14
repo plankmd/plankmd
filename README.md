@@ -1,6 +1,6 @@
 # PlankMD
 
-> **Status:** Draft (v0.1), not yet stable.
+> **Status:** Draft (v0.2), not yet stable.
 >
 > **Website:** [plankmd.org](https://plankmd.org), with the spec, the
 > [player](https://plankmd.org/player/) and the [gallery](https://plankmd.org/gallery).
@@ -51,6 +51,12 @@ guide flat-x 0 3 0 repeat=3 offset=0,3,0   # leave three plank widths between th
 flat-x 0 0 0
 flat-x 0 12 0
 ```
+
+Planks can lean (`lean=-x:20`, a ramp), and a `scaffold` line is a temporary
+support that holds up what cannot stand yet, removed at the end of its step.
+A step can say where to look at it from (` ```plank view=back-left,20 `), and
+the frontmatter of a shared model says who made it, where it lives and what
+it looks like built (`author`, `url`, `image`, `tags`…).
 
 ## Gallery
 

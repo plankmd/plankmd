@@ -67,7 +67,9 @@ its corner. [Open this tower in the player](/player/#square-tower){target="_self
 
 ## What you get
 
-- **[The specification](/spec)**, PlankMD v0.1 (draft).
+- **[The specification](/spec)**, PlankMD v0.2 (draft): planks lying, standing or
+  leaning, guides that measure gaps, scaffolds that hold up what cannot stand
+  yet, and the views to show each step from.
 - **[A 3D player](/player/){target="_self"}**: steps, plank-by-plank replay, live editing,
   diagnostics, balance check and drop test. Paste or drop a `.plank.md` file,
   or open one from the web with `?src=<url>`.

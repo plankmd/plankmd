@@ -14,7 +14,7 @@ const plankGrammar = {
   scopeName: 'source.plank',
   patterns: [
     { match: '#.*$', name: 'comment.line.number-sign.plank' },
-    { match: '\\b(guide)\\b', name: 'keyword.control.plank' },
+    { match: '\\b(guide|scaffold)\\b', name: 'keyword.control.plank' },
     { match: '\\b(flat|edge|up)-[xy]\\b', name: 'entity.name.function.plank' },
     { match: '\\b([a-z][a-z-]*)(=)', captures: { 1: { name: 'variable.parameter.plank' }, 2: { name: 'keyword.operator.plank' } } },
     { match: '-?\\b\\d+(\\.\\d+)?\\b', name: 'constant.numeric.plank' },
@@ -53,7 +53,7 @@ function plankPreviews(md: any) {
     else return html
     // The plank lines of the example, wherever they are quoted.
     const plankBody = lang === 'plank' ? body : (body.match(/^```plank[^\n]*\n([\s\S]*?)^```/m)?.[1] ?? '')
-    const lines = plankBody.split('\n').filter((l) => l.trim() && !/^\s*(#|guide\b)/.test(l))
+    const lines = plankBody.split('\n').filter((l) => l.trim() && !/^\s*(#|guide\b|scaffold\b)/.test(l))
     const overlapping = lines.length > 1 &&
       PlankMD.validate(doc).diagnostics.some((d: any) => d.code === 'E-overlap')
     if (overlapping) {
@@ -76,7 +76,7 @@ const nav = (t: Record<string, string>, prefix: string): DefaultTheme.NavItem[] 
   { text: t.use, link: `${prefix}/use` },
   { text: t.llm, link: `${prefix}/llm` },
   {
-    text: 'v0.1',
+    text: 'v0.2',
     items: [
       { text: t.changelog, link: `${prefix}/changelog` },
       { text: t.contributing, link: `${GITHUB}/blob/main/CONTRIBUTING.md` },
