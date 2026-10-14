@@ -12,12 +12,14 @@ const USAGE = `Usage:
   plankmd source-hash <file.plank.md>
 
 validate  Checks each file. Exit code 1 on any error (and on any warning with --strict).
-expand    Prints every plank in placement order, with its number and geometry.
+expand    Prints every move in order: each plank with its number and geometry,
+          scaffold planks marked "+" (and "-" where they are removed).
           Guides are marked "~" and listed at the start of their step.
 drop      Drops the finished model in a physics engine (Rapier) and reports
           which planks moved. Needs the "@dimforge/rapier3d-compat" package.
-          --replay places the planks one by one, in building order, and
-          reports the first placement after which something moved.
+          --replay places the planks one by one, in building order (scaffolds
+          put up and taken away), and reports the first move after which
+          something moved.
 source-hash  Prints the fingerprint of a model's text, to set as
           "source-hash" in its translations: validate then warns
           (W-translation-stale) when the model's text changes.
@@ -83,24 +85,27 @@ async function main(argv) {
     for (const r of results) {
       if (r.error || !r.valid) { failed = true; out.push({ file: r.file, error: r.error || 'invalid model' }); continue; }
       const replay = flags.has('--replay');
-      const sim = createDrop(R, r.planks, { replay });
+      const sim = createDrop(R, r.planks, { replay, moves: replay ? r.moves : undefined });
       const res = sim.run();
       sim.free();
       // In a replay, planks that moved a little during the build and settled
       // (nothing fell by the end) are a wobble of the engine: reported, not a failure.
       const wobble = replay && !res.stood && res.moved.length === 0;
       failed = failed || (!res.stood && !wobble);
-      out.push({ file: r.file, replay, stood: res.stood, wobble, moved: res.moved, fellAt: res.fellAt ? res.fellAt.n : null });
+      out.push({ file: r.file, replay, stood: res.stood, wobble, moved: res.moved, fellAt: res.fellAt ? res.fellAt.n : null,
+        fellAfter: res.fellAt ? res.fellAt.kind : null, fellScaffold: res.fellAt && res.fellAt.s ? res.fellAt.s : null });
     }
     if (flags.has('--json')) console.log(JSON.stringify(out, null, 2));
     else for (const o of out) {
       if (o.error) { console.log(`✗ ${o.file}: ${o.error}`); continue; }
       const worst = o.moved.slice().sort((a, b) => b.distance - a.distance)[0];
-      const most = worst ? ` (most: plank ${worst.n}, ${worst.distance.toFixed(1)} u, ${worst.degrees.toFixed(0)}°)` : '';
-      const plank = o.fellAt;
-      if (o.wobble) { console.log(`~ ${o.file}: planks moved a little during the build, after plank ${plank}, then settled: nothing fell`); continue; }
+      const most = worst ? ` (most: ${worst.s ? `scaffold ${worst.s}` : `plank ${worst.n}`}, ${worst.distance.toFixed(1)} u, ${worst.degrees.toFixed(0)}°)` : '';
+      // After which move the fall started.
+      const when = o.fellAfter === 'remove' ? `once the scaffolding was removed${o.fellAt ? ` after plank ${o.fellAt}` : ''}`
+        : o.fellAfter === 'scaffold' ? `once scaffold ${o.fellScaffold} was placed` : `once plank ${o.fellAt} was placed`;
+      if (o.wobble) { console.log(`~ ${o.file}: planks moved a little during the build, ${when.replace(/^once /, 'after ')}, then settled: nothing fell`); continue; }
       console.log(o.stood ? `✓ ${o.file}: ${o.replay ? 'stood through the whole build' : 'stood'}, no plank moved`
-        : `✗ ${o.file}: ${o.fellAt ? `fell during the build, once plank ${plank} was placed: ` : ''}${o.moved.length ? `${o.moved.length} plank${o.moved.length === 1 ? '' : 's'} moved${most}` : 'planks moved, then settled by the end'}`);
+        : `✗ ${o.file}: ${o.fellAfter ? `fell during the build, ${when}: ` : ''}${o.moved.length ? `${o.moved.length} plank${o.moved.length === 1 ? '' : 's'} moved${most}` : 'planks moved, then settled by the end'}`);
     }
     return failed ? 1 : 0;
   }
@@ -115,21 +120,27 @@ async function main(argv) {
   if (command === 'expand') {
     const r = results[0];
     if (r.error) { console.error(`${r.file}: ${r.error}`); return 2; }
-    const planks = r.planks.map((p) => ({
-      n: p.n, step: p.step, line: p.line, id: p.id, orientation: p.orientation,
-      position: p.position, size: p.size, rotation: p.rotation, center: p.center, color: p.color,
-    }));
-    const guides = r.guides.map((g) => ({
-      step: g.step, line: g.line, orientation: g.orientation, position: g.position, size: g.size, rotation: g.rotation, center: g.center,
-    }));
-    if (flags.has('--json')) console.log(JSON.stringify({ meta: r.meta, planks, guides }, null, 2));
+    const geometry = (p) => ({
+      orientation: p.orientation, position: p.position, size: p.size, rotation: p.rotation,
+      ...(p.lean ? { lean: p.lean } : {}), center: p.center, axes: p.axes,
+    });
+    const planks = r.planks.map((p) => ({ n: p.n, step: p.step, line: p.line, id: p.id, ...geometry(p), color: p.color, move: p.move }));
+    const guides = r.guides.map((g) => ({ step: g.step, line: g.line, ...geometry(g) }));
+    const scaffolds = r.scaffolds.map((p) => ({ s: p.s, step: p.step, line: p.line, id: p.id, ...geometry(p), move: p.move, removed: p.removed }));
+    const moves = r.moves.map((m) => ({ move: m.index, kind: m.kind, step: m.step,
+      ...(m.plank ? { n: m.plank.n } : m.scaffold ? { s: m.scaffold.s } : { s: m.scaffolds.map((x) => x.s) }) }));
+    if (flags.has('--json')) console.log(JSON.stringify({ meta: r.meta, planks, guides, scaffolds, moves }, null, 2));
     else {
       const row = (label, p) => `${label}  step ${p.step}  ${p.orientation.padEnd(6)}  ` +
-        `${p.position.join(' ')}${p.rotation ? `  rot ${p.rotation}` : ''}${p.id ? `  #${p.id}` : ''}`;
+        `${p.position.join(' ')}${p.rotation ? `  rot ${p.rotation}` : ''}${p.lean ? `  lean ${p.lean.dir}:${p.lean.degrees}` : ''}${p.id ? `  #${p.id}` : ''}`;
       // Guides are listed at the start of their step, where the builder lays them.
       for (const step of r.steps) {
         guides.filter((g) => g.step === step.number).forEach((g) => console.log(row('   ~', g)));
-        planks.filter((p) => p.step === step.number).forEach((p) => console.log(row(String(p.n).padStart(4), p)));
+        for (const m of r.moves.filter((x) => x.step === step.number)) {
+          if (m.kind === 'plank') console.log(row(String(m.plank.n).padStart(4), m.plank));
+          else if (m.kind === 'scaffold') console.log(row(`  +${m.scaffold.s}`, m.scaffold));
+          else console.log(`   -  step ${m.step}  remove scaffold${m.scaffolds.length > 1 ? 's' : ''} ${m.scaffolds.map((x) => x.s).join(' ')}`);
+        }
       }
     }
     return 0;
