@@ -30,6 +30,9 @@ img { display: block; width: 100%; height: auto; border-radius: 2mm; }
 .count { margin-left: auto; color: var(--muted); font-size: 9.5pt; white-space: nowrap; }
 .step p { margin: 0 0 3mm; }
 .guide { color: var(--guide); font-size: 10pt; }
+.scaffold { color: #4f5a66; font-size: 10pt; }
+.source { margin: -3mm 0 6mm; font-size: 10pt; color: var(--muted); overflow-wrap: anywhere; }
+.credit { font-size: 10pt; color: var(--muted); }
 .views { display: grid; grid-template-columns: 2fr 1fr; gap: 3mm; align-items: start; }
 .views .main { border: 1px solid var(--line); }
 .views .order { display: grid; gap: 2mm; }
@@ -51,6 +54,7 @@ img { display: block; width: 100%; height: auto; border-radius: 2mm; }
 <div id="book"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="../src/plankmd.js"></script>
+<script src="github.js"></script>
 <script src="samples.js"></script>
 <script src="source.js"></script>
 <script src="wood.js"></script>
@@ -73,12 +77,18 @@ const T = FR ? {
   translation: 'Traduction', planks: 'Planchettes', steps: 'Étapes', difficulty: 'Difficulté', inventory: 'À prévoir', license: 'Licence', size: 'Dimensions',
   stepPlanks: (n) => `${n} planchette${n > 1 ? 's' : ''}`, view: (a, b) => `planchettes ${a} à ${b}`,
   guide: (n) => `${n} gabarit${n > 1 ? 's' : ''} (en bleu) : posez-les pour mesurer l'écart, puis retirez-les.`,
+  scaffoldUp: (n) => `${n} étai${n > 1 ? 's' : ''} (en gris) : ${n > 1 ? 'ils portent' : 'il porte'} les planchettes du dessus pendant la pose, puis on ${n > 1 ? 'les' : 'le'} retire.`,
+  scaffoldDown: (n) => (n > 1 ? `Retirez les ${n} étais.` : "Retirez l'étai."),
+  author: 'Auteur', date: 'Date', minutes: 'Durée', min: (m) => `environ ${m} min`, source: 'Modèle', basedOn: (x) => `D'après ${x}.`,
   made: 'Notice générée par PlankMD, un format ouvert pour les constructions en planchettes : plankmd.org',
   player: 'Lecteur', print: 'Imprimer ou enregistrer en PDF', drawing: 'Dessin des vues…', ready: (n) => `${n} pages environ.`,
 } : {
   translation: 'Translation', planks: 'Planks', steps: 'Steps', difficulty: 'Difficulty', inventory: 'You need', license: 'License', size: 'Size',
   stepPlanks: (n) => `${n} plank${n === 1 ? '' : 's'}`, view: (a, b) => `planks ${a} to ${b}`,
   guide: (n) => `${n} guide${n === 1 ? '' : 's'} (in blue): lay ${n === 1 ? 'it' : 'them'} to measure the gap, then take ${n === 1 ? 'it' : 'them'} away.`,
+  scaffoldUp: (n) => `${n} scaffold plank${n === 1 ? '' : 's'} (in grey): ${n === 1 ? 'it holds' : 'they hold'} the planks above while they go on, then take ${n === 1 ? 'it' : 'them'} away.`,
+  scaffoldDown: (n) => `Take away the ${n === 1 ? 'scaffold plank' : `${n} scaffold planks`}.`,
+  author: 'Author', date: 'Date', minutes: 'Time', min: (m) => `about ${m} min`, source: 'Model', basedOn: (x) => `Based on ${x}.`,
   made: 'Booklet made with PlankMD, an open format for plank constructions: plankmd.org',
   player: 'Player', print: 'Print or save as PDF', drawing: 'Drawing the views…', ready: (n) => `About ${n} pages.`,
 };
@@ -96,7 +106,8 @@ const el = (tag, attrs = {}, ...children) => {
 };
 
 // `translation` is the text of a translation of the model, or nothing.
-function build(text, translation) {
+// `photo` is the address of a photograph of the built model, or nothing.
+function build(text, translation, photo) {
   const original = PlankMD.validate(text);
   const tr = translation ? PlankMD.parse(translation) : null;
   const model = tr ? PlankMD.translate(original, tr) : original;
@@ -104,6 +115,10 @@ function build(text, translation) {
   const render = PlankMDRender.create({ width: 1400, height: 1000, background: '#fbf8f3', ground: '#efe9df' });
   render.setModel(model);
   const shot = (view) => render.draw({ azimuth: 35, elevation: 30, zoom: 1.15, ...view }).toDataURL('image/jpeg', 0.9);
+  // Where each picture is taken from: the step's view, the model's, or the
+  // booklet's own (docs/proposals/view.md).
+  const DEFAULTS = { azimuth: 35, elevation: 30, zoom: 1.15 };
+  const viewOf = (n) => PlankMDRender.stepView(model, n, DEFAULTS);
   const book = document.getElementById('book');
   book.replaceChildren();
   const mm = meta.unit_mm || 7.8;
@@ -119,16 +134,22 @@ function build(text, translation) {
         [T.size, `${cm(size.x)} × ${cm(size.z)} × ${cm(size.y)} cm`],
         ...(meta.inventory ? [[T.inventory, meta.inventory]] : []),
         ...(meta.difficulty ? [[T.difficulty, `${meta.difficulty}/5`]] : []),
+        ...(meta.minutes ? [[T.minutes, T.min(meta.minutes)]] : []),
+        ...(meta.author ? [[T.author, meta.author]] : []),
         ...(meta.license ? [[T.license, meta.license]] : []),
+        ...(meta.date ? [[T.date, meta.date]] : []),
         ...(tr && tr.meta.author ? [[T.translation, tr.meta.author]] : [])]
         .map(([k, v]) => el('div', {}, el('b', {}, String(v)), k))),
-    el('img', { class: 'hero', alt: meta.title || '', src: shot({}) }),
+    // The address in full: a printed booklet leads back to the file.
+    ...(meta.url ? [el('p', { class: 'source' }, `${T.source}${FR ? ' : ' : ': '}`, meta.url)] : []),
+    el('img', { class: 'hero', alt: meta.title || '', src: photo || shot(viewOf(0)) }),
     el('p', { class: 'foot' }, T.made));
   book.append(cover);
 
   // Steps, as many per page as fit: the browser breaks pages between them.
   const steps = el('section', { class: 'page' });
   book.append(steps);
+  const moves = model.moves || [];
   for (const step of model.steps) {
     const own = model.planks.filter((p) => p.step === step.number);
     const guides = model.guides.filter((g) => g.step === step.number);
@@ -136,15 +157,23 @@ function build(text, translation) {
     const last = own.length ? own[own.length - 1].n : (first - 1);
     const lastBefore = model.planks.filter((p) => p.step < step.number).reduce((n, p) => Math.max(n, p.n), 0);
     const title = step.title.replace(/^\S+\s+\d+\s*:\s*/, ''); // "Step 1: ", "Étape 1 : "...
+    const sv = viewOf(step.number);
+    // The end of the step, but before its scaffolds are taken away: the
+    // picture shows them in place, the text says to remove them.
+    let end = 0;
+    moves.forEach((m) => { if (m.step <= step.number) end = m.index; });
+    while (end > 0 && moves[end - 1].kind === 'remove' && moves[end - 1].step === step.number) end--;
+    const scaffoldsUp = (model.scaffolds || []).filter((r) => r.step === step.number);
+    const scaffoldsDown = moves.filter((m) => m.kind === 'remove' && m.step === step.number).reduce((n, m) => n + m.scaffolds.length, 0);
     const views = el('div', { class: 'views' });
-    views.append(el('img', { class: 'main', alt: title, src: shot({ upTo: own.length ? last : lastBefore, fadeBelow: first || Infinity, step: step.number }) }));
+    views.append(el('img', { class: 'main', alt: title, src: shot({ ...sv, ...(moves.length ? { move: end } : { upTo: own.length ? last : lastBefore }), fadeBelow: first || Infinity, step: step.number }) }));
     // The order of the step: up to three views of its planks going on.
     if (own.length >= 6) {
       const order = el('div', { class: 'order' });
       const marks = [1, 2, 3].map((k) => own[Math.max(0, Math.round((own.length * k) / 4) - 1)].n);
       let from = first;
       for (const n of marks) {
-        order.append(el('figure', {}, el('img', { alt: '', src: shot({ upTo: n, fadeBelow: first, step: step.number, lit: n }) }), el('figcaption', {}, T.view(from, n))));
+        order.append(el('figure', {}, el('img', { alt: '', src: shot({ ...sv, upTo: n, fadeBelow: first, step: step.number, lit: n }) }), el('figcaption', {}, T.view(from, n))));
         from = n + 1;
       }
       views.append(order);
@@ -153,8 +182,12 @@ function build(text, translation) {
       el('header', {}, el('span', { class: 'num' }, String(step.number)), el('h2', {}, title), el('span', { class: 'count' }, own.length ? `${T.stepPlanks(own.length)}, ${T.view(first, last)}` : '')),
       ...(step.text ? [el('p', {}, step.text)] : []),
       ...(guides.length ? [el('p', { class: 'guide' }, T.guide(guides.length))] : []),
+      ...(scaffoldsUp.length ? [el('p', { class: 'scaffold' }, T.scaffoldUp(scaffoldsUp.length))] : []),
+      ...(scaffoldsDown ? [el('p', { class: 'scaffold' }, T.scaffoldDown(scaffoldsDown))] : []),
       views));
   }
+  // The model this one is based on is credited at the end.
+  if (meta['based-on']) steps.append(el('p', { class: 'credit' }, T.basedOn(meta['based-on'])));
   document.title = `${meta.title || 'PlankMD'} | ${FR ? 'Notice PlankMD' : 'PlankMD Booklet'}`;
   document.getElementById('status').textContent = T.ready(1 + Math.ceil(model.steps.length / 2));
   document.body.dataset.ready = 'true';
@@ -163,10 +196,21 @@ function build(text, translation) {
 
 window.PlankMDBooklet = { build };
 
+// A photograph of the built model (docs/proposals/metadata.md): the one the
+// player passes (&img= in the link), or the model's `image` next to a model
+// opened with ?src=. Never for a model given in the link alone.
+function photoOf(text) {
+  const given = new URLSearchParams(location.hash.slice(1)).get('img');
+  if (given) return /^https:\/\//.test(given) ? given : null;
+  const src = params.get('src');
+  const image = PlankMD.parse(text).meta.image;
+  return src && image ? PlankMDGitHub.asset({ url: new URL(src, location.href).href }, image) : null;
+}
+
 document.getElementById('print').addEventListener('click', () => window.print());
 if (!params.has('render')) {
   PlankMDSource.load({ location, lang: LANG, samples: window.PLANKMD_SAMPLES, translations: window.PLANKMD_TRANSLATIONS })
-    .then(({ text, translation }) => build(text, translation));
+    .then(({ text, translation }) => build(text, translation, photoOf(text)));
 }
 else document.body.dataset.ready = 'loading';
 </script>

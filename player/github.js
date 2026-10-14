@@ -169,10 +169,30 @@
     return { models, translations: found };
   }
 
+  /**
+   * The address of a file named by a model, relative to it, such as its
+   * `image` (docs/proposals/metadata.md): `file` is the model's entry in a
+   * listing. A gist is flat: the file of that name in the same gist, in its
+   * latest version. An absolute https: address is kept; anything else that
+   * leaves the folder (an absolute path, "..") gives null.
+   */
+  function asset(file, path) {
+    const text = String(path || '');
+    if (/^https:\/\//i.test(text)) return text;
+    if (!text || /^[a-z][a-z0-9+.-]*:/i.test(text) || /^[/\\]/.test(text) || /(^|[/\\])\.\.([/\\]|$)/.test(text)) return null;
+    let url;
+    try { url = new URL(file.url); } catch { return null; }
+    if (url.hostname === 'gist.githubusercontent.com') {
+      const [user, id] = url.pathname.split('/').filter(Boolean);
+      return `https://gist.githubusercontent.com/${user}/${id}/raw/${text.split('/').map(encodeURIComponent).join('/')}`;
+    }
+    return new URL(text.split('/').map(encodeURIComponent).join('/'), url).href;
+  }
+
   function fromSearch(search) {
     const params = new URLSearchParams(search);
     return params.get('github') || params.get('repo');
   }
 
-  return { parse, label, htmlUrl, list, cachedList, text, translations, fromSearch, isModel, MAX_FILES };
+  return { parse, label, htmlUrl, list, cachedList, text, translations, asset, fromSearch, isModel, MAX_FILES };
 });
