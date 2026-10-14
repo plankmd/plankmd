@@ -107,7 +107,8 @@ test('the player bundles the current samples and sources', () => {
 
 test('every pattern in the LLM instructions is valid', () => {
   const guide = fs.readFileSync(path.join(__dirname, '..', 'docs', 'llm-instructions.md'), 'utf8');
-  const blocks = [...guide.matchAll(/\n```plank\n([\s\S]*?)\n```/g)].map((m) => m[1]).filter((b) => !b.includes('<'));
+  // Patterns are the plank blocks of the page; examples quoted in a longer fence are not.
+  const blocks = [...guide.replace(/^````[\s\S]*?^````$/gm, '').matchAll(/\n```plank\n([\s\S]*?)\n```/g)].map((m) => m[1]).filter((b) => !b.includes('<'));
   assert.ok(blocks.length >= 5);
   for (const b of blocks) assert.deepEqual(validate('```plank\n' + b + '\n```\n').diagnostics, [], b);
 });
@@ -271,4 +272,161 @@ test('the command line prints the source hash of a model', () => {
   const out = execFileSync(process.execPath, [path.join(__dirname, '..', 'bin', 'plankmd.js'), 'source-hash', file], { encoding: 'utf8' });
   assert.equal(out.trim(), sourceHash(parse(fs.readFileSync(file, 'utf8'))));
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'samples', 'square-tower.fr.plank.md'), 'utf8'), new RegExp(`^source-hash: ${out.trim()}$`, 'm'));
+});
+
+// ------------------------------------------------- v0.2: shared metadata
+
+test('the metadata of shared models is checked, and kept', () => {
+  const fm = (lines) => `---\nplankmd: "0.2"\ntitle: T\n${lines.join('\n')}\n---\n`;
+  const ok = validate(block(['flat-x 0 0 0'], fm([
+    'author: Jane Doe', 'license: CC-BY-4.0', 'url: https://gist.github.com/jane/0e9490ed', 'based-on: Castle, by Someone',
+    'date: 2026-10-14', 'image: photos/castle.jpg', 'tags: [castle, médiéval, bridge-2]', 'minutes: 45'])));
+  assert.deepEqual(ok.diagnostics, []);
+  assert.deepEqual(ok.meta.tags, ['castle', 'médiéval', 'bridge-2']);
+  assert.equal(ok.meta.minutes, 45);
+  assert.equal(ok.meta.date, '2026-10-14');
+  const bad = validate(block(['flat-x 0 0 0'], fm([
+    'url: http://example.com/castle', 'based-on: ftp://example.com/x', 'date: 2026-02-30', 'image: ../secret.jpg',
+    'tags: castle', 'minutes: 0'])));
+  assert.deepEqual(codes(bad), Array(6).fill('E-frontmatter'));
+  for (const key of ['url', 'based-on', 'date', 'image', 'tags', 'minutes']) assert.equal(bad.meta[key], undefined, key);
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0'], fm(['image: /etc/castle.jpg'])))), ['E-frontmatter']);
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0'], fm(['image: https://example.com/castle.jpg', 'tags: []'])))), []);
+});
+
+test('a translation ignores the metadata of the original', () => {
+  const r = validate('---\nplankmd: "0.2"\ntitle: T\nlang: fr\ntranslation-of: a.plank.md\nurl: https://example.com\ntags: [a]\nview: back\n---\n\n## Un\n\n```plank view=front\n```\n');
+  assert.deepEqual(codes(r), ['W-translation-ignored-key', 'W-translation-ignored-key', 'W-translation-ignored-key']);
+});
+
+// ------------------------------------------------------- v0.2: view hints
+
+test('views: named directions, azimuths, elevations, on the model and on steps', () => {
+  const r = validate('---\nplankmd: "0.2"\ntitle: T\nview: front-left,20\n---\n\n## One\n\n```plank view=back\nflat-x 0 0 0 id=base\n```\n\n' +
+    '## Two\n\n```plank view=120,35 zoom=2 focus=step\nflat-x 0 0 1\n```\n\n## Three\n\n```plank view=top focus=base\nflat-x 0 0 2\n```\n\n## Four\n\n```plank\nflat-x 0 0 3\n```\n');
+  assert.deepEqual(r.diagnostics, []);
+  assert.deepEqual(r.meta.view, { azimuth: 315, elevation: 20 });
+  assert.deepEqual(r.steps.map((s) => s.view), [
+    { azimuth: 180, elevation: 28 }, { azimuth: 120, elevation: 35, zoom: 2, focus: 'step' }, { azimuth: 0, elevation: 90, focus: 'base' }, null]);
+});
+
+test('views: a bad value is a warning, and is ignored', () => {
+  const r = validate('---\nplankmd: "0.2"\ntitle: T\nview: sideways\n---\n\n```plank view=back,95 zoom=-1 focus=Roof size=2 big\nflat-x 0 0 0\n```\n\n```plank focus=later\nflat-x 0 0 1\n```\n\n```plank\nflat-x 0 0 2 id=later\n```\n');
+  assert.deepEqual(codes(r), ['W-view', 'W-view', 'W-view', 'W-view', 'W-unknown-attribute', 'W-view', 'W-view']);
+  assert.equal(r.valid, true);
+  assert.equal(r.meta.view, undefined);
+  assert.equal(r.steps[0].view, null);
+  assert.equal(r.steps[1].view.focus, undefined);
+});
+
+// ---------------------------------------------------- v0.2: leaning planks
+
+test('a leaning plank pivots on the bottom edge on the side it leans towards', () => {
+  const [p] = validate(block(['flat-x 0 0 0 lean=-x:30'])).planks;
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
+  near(p.z0, 0);
+  // The -x bottom edge stays at x = 0; the plank rises towards +x.
+  near(Math.min(...p.corners.map((c) => c[0])), 0 - 1 * Math.sin(Math.PI / 6));
+  near(p.z1, 15 * Math.sin(Math.PI / 6) + Math.cos(Math.PI / 6));
+  assert.deepEqual(p.lean, { dir: '-x', degrees: 30 });
+  // A standing plank leaning towards +y tips its top over towards +y.
+  const [q] = validate(block(['up-y 0 0 0 lean=+y:10'])).planks;
+  assert.ok(q.center[1] > 1.5 && q.z0 === 0);
+});
+
+test('lean values are checked', () => {
+  for (const v of ['x:20', '+z:20', '+x:0', '+x:90', '+x', '-y:abc']) {
+    assert.deepEqual(codes(validate(block([`flat-x 0 0 0 lean=${v}`]))), ['E-lean'], v);
+  }
+});
+
+test('a ramp rests on the edge of a step, within the tolerance of the angle', () => {
+  const ramp = (angle) => validate(`\`\`\`plank\nflat-y 12 0 0 repeat=4 offset=0,0,1\n\`\`\`\n\n\`\`\`plank\nflat-x 0 0 0 lean=-x:${angle}\n\`\`\`\n`);
+  // The exact angle is atan(4 / 12) = 18.43°: a degree either way still rests on it.
+  for (const a of [18.4, 18, 19]) assert.deepEqual(codes(ramp(a)), [], `${a}`);
+  assert.deepEqual(codes(ramp(10)), ['E-overlap']);
+  // Too flat to clear the step, or lying in the air.
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 1 lean=-x:5']))), ['W-floating']);
+});
+
+test('two planks leaning on each other, and a plank laid across them', () => {
+  const r = validate('```plank\nup-y 0 0 0 lean=+x:10\nup-y 6.2 0 0 lean=-x:10\n```\n\n```plank\nflat-y 2.1 0 14.95\n```\n');
+  assert.deepEqual(r.diagnostics, []);
+  assert.deepEqual(codes(validate(block(['up-y 0 0 0 lean=+x:10', 'up-y 5 0 0 lean=-x:10']))), ['E-overlap']);
+});
+
+test('lean, then rot: the leaning plank turns as a whole', () => {
+  const [a] = validate(block(['flat-x 0 0 0 lean=-x:20'])).planks;
+  const [b] = validate(block(['flat-x 0 0 0 lean=-x:20 rot=90'])).planks;
+  const near = (x, y) => assert.ok(Math.abs(x - y) < 1e-9, `${x} != ${y}`);
+  near(a.z1, b.z1);
+  // Turned a quarter around the centre of its box (7.5, 1.5): the rise now goes towards +y.
+  near(b.center[0], 7.5);
+  near(b.center[1] - 1.5, a.center[0] - 7.5);
+});
+
+// ----------------------------------------------------------- v0.2: scaffolds
+
+const corbel = (weights = 5, extra = '') => `---\nplankmd: "0.2"\ntitle: Corbel\n---\n\n## Piers\n\n\`\`\`plank\n` +
+  'flat-y 0 0 0 repeat=4 offset=0,0,1\nflat-y 27 0 0 repeat=4 offset=0,0,1\n```\n\n## Span\n\n```plank\n' +
+  `scaffold flat-x 7.5 6 0 repeat=4 offset=0,0,1${extra}\nflat-x 0 6 4\nflat-x 15 6 4\n` +
+  `flat-y 0 0 5 repeat=${weights} offset=0,0,1\nflat-y 27 0 5 repeat=${weights} offset=0,0,1\n\`\`\`\n`;
+
+test('a scaffold is placed whole, carries what rests on it, and goes at the end of its step', () => {
+  const r = validate(corbel());
+  assert.deepEqual(r.diagnostics, []);
+  assert.equal(r.planks.length, 20);
+  assert.deepEqual(r.scaffolds.map((s) => [s.s, s.z0, s.n]), [[1, 0, undefined], [2, 1, undefined], [3, 2, undefined], [4, 3, undefined]]);
+  const kinds = r.moves.map((m) => (m.kind === 'plank' ? `p${m.plank.n}` : m.kind === 'scaffold' ? `s${m.scaffold.s}` : `-${m.scaffolds.map((x) => x.s).join('')}`));
+  assert.deepEqual(kinds.slice(7, 14), ['p8', 's1', 's2', 's3', 's4', 'p9', 'p10']);
+  assert.equal(kinds[kinds.length - 1], '-1234');
+  assert.deepEqual(r.moves.map((m) => m.index), r.moves.map((m, i) => i + 1));
+  assert.equal(r.scaffolds[0].removed, r.moves.length);
+  // Without the scaffold, the beams still touch the piers: what they lack is
+  // balance, which the balance check finds (test/physics.test.js).
+  assert.deepEqual(codes(validate(corbel().replace(/^scaffold .*\n/m, ''))), []);
+});
+
+test('until releases a scaffold after a named plank, in the same step or later', () => {
+  const r = validate(corbel(5, ' until=beam').replace('flat-x 15 6 4', 'flat-x 15 6 4 id=beam'));
+  assert.deepEqual(r.diagnostics, []);
+  const removal = r.moves.find((m) => m.kind === 'remove');
+  assert.equal(removal.after, 10);
+  // Removed before the counterweights: the beams rest on the piers' edges only, they still touch.
+  const bad = validate(corbel(5, ' until=nothing'));
+  assert.deepEqual(codes(bad), ['W-scaffold-release']);
+  assert.match(bad.diagnostics[0].message, /no plank/);
+  const early = validate(corbel(5, ' until=pier').replace('flat-y 0 0 0 repeat=4', 'flat-y 0 0 0 id=pier repeat=4'));
+  assert.ok(codes(early).includes('W-scaffold-release'));
+});
+
+test('a plank left in the air when its scaffold goes is reported', () => {
+  const r = validate('```plank\nscaffold flat-x 0 0 0\nflat-x 0 0 1\n```\n');
+  assert.deepEqual(codes(r), ['W-scaffold-floating']);
+  assert.equal(r.diagnostics[0].plank, 1);
+});
+
+test('a scaffold boxed in on every side cannot slide out, one free side is enough', () => {
+  const r = validate('```plank\nflat-x 0 0 0\nflat-x 30 0 0\nflat-x 15 -3 0\nflat-x 15 3 0\nscaffold flat-x 15 0 0\nflat-x 8 0 1\nflat-x 23 0 1\n```\n');
+  assert.deepEqual(codes(r), ['W-scaffold-wedged']);
+  assert.equal(r.diagnostics[0].scaffold, 1);
+  // Blocked at both ends only: it slides out sideways.
+  assert.deepEqual(codes(validate('```plank\nflat-x 0 0 0\nflat-x 30 0 0\nscaffold flat-x 15 0 0\nflat-x 8 0 1\nflat-x 23 0 1\n```\n')), []);
+});
+
+test('scaffolds count in the inventory while they are in place', () => {
+  const r = validate(corbel().replace('title: Corbel', 'title: Corbel\ninventory: 21'));
+  assert.deepEqual(codes(r), ['W-inventory']);
+  assert.match(r.diagnostics[0].message, /^24 planks at once, scaffolds included/);
+  assert.deepEqual(codes(validate(corbel().replace('title: Corbel', 'title: Corbel\ninventory: 24'))), []);
+});
+
+test('a scaffold line is checked like a plank, and until only applies to it', () => {
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0', 'scaffold flat-x 0 0 0']))), ['E-overlap']);
+  assert.deepEqual(codes(validate(block(['scaffold flat-x 0 0 2']))), ['W-floating']);
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0 until=a']))), ['W-unknown-attribute']);
+});
+
+test('expand leaves scaffolds out of the planks', () => {
+  assert.equal(expand(parse(corbel())).length, 20);
 });
