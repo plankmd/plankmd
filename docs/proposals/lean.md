@@ -1,6 +1,7 @@
 # Proposal: leaning planks
 
-> Status: proposal for PlankMD v0.2, not part of the format yet.
+> Status: accepted, part of PlankMD v0.2 (`SPEC.md`), and implemented in
+> the reference tools. This page keeps the reasons and the alternatives.
 
 ## The problem
 
@@ -41,8 +42,8 @@ over (towards the wall it rests on).
 Rules:
 
 - `lean` applies before `rot`: the plank is tipped in the frame of its
-  orientation, then the whole thing turns around the vertical axis (around
-  its centre, or `pivot`).
+  orientation, then the whole thing turns around the vertical axis through
+  the centre of its box before the lean (or around `pivot`).
 - `offset` moves the pivot edge with every repetition. `rot-step` still
   turns each repetition a little more; there is no `lean-step` (see Open
   questions).
@@ -62,9 +63,10 @@ Rules:
   - `E-lean`: the value does not match `<dir>:<degrees>`, the direction is
     not one of the four, or the angle is not strictly between 0 and 90.
   - `E-overlap` and `E-guide-overlap` use an exact box-box test (separating
-    axis theorem, fifteen axes). A validator that cannot MUST report
-    `W-unchecked-lean` rather than call the plank valid, as
-    `W-unchecked-rotation` does for `rot`.
+    axis theorem, fifteen axes), within a tolerance of 0.2 u (about 1.6 mm)
+    when either plank leans: the author rounds the angle. A validator that
+    cannot MUST report `W-unchecked-lean` rather than call the plank valid,
+    as `W-unchecked-rotation` does for `rot`.
   - `E-below-ground`: the lowest point of the tipped box is below `z = 0`.
     This cannot happen with the pivot rule when `z ≥ 0`, but a reader that
     computes the box must still check.

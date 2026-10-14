@@ -1,6 +1,7 @@
 # Proposal: view hints
 
-> Status: proposal for PlankMD v0.2, not part of the format yet.
+> Status: accepted, part of PlankMD v0.2 (`SPEC.md`), and implemented in
+> the reference tools. This page keeps the reasons and the alternatives.
 
 ## The problem
 

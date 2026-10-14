@@ -1,6 +1,7 @@
 # Proposal: scaffolding planks
 
-> Status: proposal for PlankMD v0.2, not part of the format yet.
+> Status: accepted, part of PlankMD v0.2 (`SPEC.md`), and implemented in
+> the reference tools. This page keeps the reasons and the alternatives.
 
 ## The problem
 
@@ -97,9 +98,11 @@ Rules:
   - `W-scaffold-release`: `until` names a plank that does not exist, or that
     comes before the scaffold in placement order.
   - `W-scaffold-wedged`: at removal, a scaffold has a plank resting on it and
-    both of its ends are against other planks, so it cannot slide out. This
-    is a warning rather than an error because a builder can lift the plank
-    above a little; the design should avoid it.
+    planks against it on every side, so it cannot slide out, neither along
+    its length nor sideways. This is a warning rather than an error because
+    a builder can lift the plank above a little; the design should avoid it.
+    (A first draft only looked at the two ends; but a builder pulls a
+    scaffold out sideways from under a beam, which is often the easy way.)
   - Scaffolds count towards `inventory` while they are in place:
     `W-inventory` compares the inventory with the **peak** number of planks
     present at once, real and scaffold, not with the final count.
@@ -156,6 +159,8 @@ Rules:
 
 - Should a scaffold be allowed to rest on a real plank placed later, in the
   way `hold` allows? No for now: a scaffold is built before what it carries.
-- Whether `W-scaffold-wedged` can be decided exactly (a plank resting on
-  the scaffold's top face, and real planks touching both of its end faces)
-  or should stay a heuristic.
+- Which way a scaffold comes out. The format does not say: tools pick a
+  free side (the reference video slides it out sideways, towards the
+  front). An `out=<direction>` attribute (`out=-y`) would let the author say
+  it; the validator would check that side is free, and the booklet would
+  tell the builder.
