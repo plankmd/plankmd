@@ -64,6 +64,8 @@ test('every sample stands at every placement, with a tilt margin, unless it fall
   for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.plank.md'))) {
     const text = fs.readFileSync(path.join(dir, file), 'utf8');
     const r = await analyse(text);
+    // Leaning planks are for the drop test (test/drop.test.js): the balance check says so.
+    if (/\blean=/.test(text)) { assert.deepEqual(r.diagnostics.map((d) => d.code), ['I-unchecked-lean'], file); continue; }
     if (/^expect:\s*falls\s*$/m.test(text)) { assert.equal(r.stable, false, file); continue; }
     assert.equal(r.stable, true, file);
     assert.ok(r.steps.every((s) => s.tilt >= physics.FRAGILE_TILT), `${file}: ${JSON.stringify(r.steps)}`);
@@ -82,7 +84,8 @@ test('every reference case gets the expected verdict', { skip }, async () => {
 
 test('every pattern in the LLM instructions stands', { skip }, async () => {
   const guide = fs.readFileSync(path.join(__dirname, '..', 'docs', 'llm-instructions.md'), 'utf8');
-  const blocks = [...guide.matchAll(/\n```plank\n([\s\S]*?)\n```/g)].map((m) => m[1]).filter((b) => !b.includes('<'));
+  // Patterns are the plank blocks of the page; examples quoted in a longer fence are not.
+  const blocks = [...guide.replace(/^````[\s\S]*?^````$/gm, '').matchAll(/\n```plank\n([\s\S]*?)\n```/g)].map((m) => m[1]).filter((b) => !b.includes('<'));
   for (const b of blocks) {
     const r = await analyse('```plank\n' + b + '\n```\n');
     assert.equal(r.stable, true, b);
@@ -114,4 +117,46 @@ test('the tilt of one step on demand is the one a full check measures', { skip }
   }
   const some = physics.analyse(await load(), validate(text), { tilts: [2] });
   assert.deepEqual(some.steps.map((s) => s.tilt === null), [true, false, true]);
+});
+
+// A corbel bridge: the beams tip until their counterweights are on, so a
+// scaffold carries them meanwhile (docs/proposals/scaffold.md).
+const corbel = (weights, scaffold = true) => '## Piers\n\n```plank\nflat-y 0 0 0 repeat=4 offset=0,0,1\nflat-y 27 0 0 repeat=4 offset=0,0,1\n```\n\n' +
+  `## Span\n\n\`\`\`plank\n${scaffold ? 'scaffold flat-x 7.5 6 0 repeat=4 offset=0,0,1\n' : ''}flat-x 0 6 4\nflat-x 15 6 4\n` +
+  `flat-y 0 0 5 repeat=${weights} offset=0,0,1\nflat-y 27 0 5 repeat=${weights} offset=0,0,1\n\`\`\`\n`;
+
+test('a scaffold holds the beams while they go on, and the bridge stands once it is removed', { skip }, async () => {
+  const r = await analyse(corbel(5));
+  assert.equal(r.stable, true, JSON.stringify(r.diagnostics));
+  const result = validate(corbel(5));
+  assert.equal(r.moves.length, result.moves.length);
+  assert.equal(r.placements.length, 20);
+  // Without the scaffold, the first beam tips as soon as it is placed.
+  const bare = await analyse(corbel(5, false));
+  assert.equal(bare.stable, false);
+  assert.equal(bare.diagnostics[0].plank, 9);
+});
+
+test('a bridge too light to stand alone falls when its scaffold is removed', { skip }, async () => {
+  const r = await analyse(corbel(2));
+  assert.equal(r.stable, false);
+  const d = r.diagnostics.find((x) => x.code === 'I-unstable');
+  assert.equal(d.kind, 'remove');
+  assert.deepEqual(d.removed, [1, 2, 3, 4]);
+  assert.equal(d.move, validate(corbel(2)).moves.length);
+  assert.match(d.message, /^When scaffolds 1 to 4 are removed, the construction falls .* without the scaffolding\.$/);
+  assert.deepEqual(r.steps.map((s) => s.stands), [true, false]);
+});
+
+test('the tilt of a step is measured once its scaffolds are removed', { skip }, async () => {
+  const full = await analyse(corbel(5));
+  const one = physics.stepTilt(await load(), validate(corbel(5)), 2);
+  assert.ok(Math.abs(one.tilt - full.steps[1].tilt) < 1e-6);
+});
+
+test('a model with a leaning plank is not checked: the drop test is', { skip }, async () => {
+  const r = await analyse(block(['flat-x 0 0 0', 'up-y 0 0 1 lean=+y:10']));
+  assert.ok(r.skipped);
+  assert.deepEqual(r.diagnostics.map((d) => [d.code, d.plank]), [['I-unchecked-lean', 2]]);
+  assert.equal(physics.stepTilt(await load(), validate(block(['up-y 0 0 0 lean=+y:10'])), 1), null);
 });

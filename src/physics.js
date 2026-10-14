@@ -25,6 +25,12 @@
  *
  * Side contacts carry no load in this model: friction between planks pressed
  * side by side is ignored, which makes the check conservative.
+ *
+ * Scaffolds (docs/proposals/scaffold.md) are bodies like planks while they
+ * are in place, and every removal is a check point. Leaning planks are not
+ * modelled: their contacts are edges and corners at an angle, not polygons
+ * between level faces. A model with one is not checked (`I-unchecked-lean`);
+ * the drop test handles it.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -256,9 +262,9 @@
   function balance(highs, planks, { hold = [] } = {}) {
     const prog = program(planks);
     const extra = [];
-    // Planks in `hold` get no slack: they must stay in balance, so the
-    // blame falls on the others.
-    const held = new Set(hold.map((n) => planks.findIndex((p) => p.n === n)));
+    // Planks in `hold` (plank numbers, or the planks themselves) get no
+    // slack: they must stay in balance, so the blame falls on the others.
+    const held = new Set(hold.map((h) => planks.findIndex((p) => p === h || (typeof h === 'number' && !p.scaffold && p.n === h))));
     for (let r = 0; r < prog.nEq; r++) {
       if (held.has(Math.floor(r / 6))) continue;
       extra.push({ lower: 0, upper: Infinity, entries: [[r, 1]], slack: r });
@@ -280,12 +286,13 @@
       if (held.size) return null; // the held planks cannot be balanced either way
       throw new Error('balance: the solver failed');
     }
-    const failing = new Set();
+    const failing = new Set(), failingScaffolds = new Set();
     extra.forEach((e, k) => {
       const b = Math.floor(e.slack / 6);
-      if (res.x[first + k] > 1e-6 * prog.weight[b]) failing.add(planks[b].n);
+      if (res.x[first + k] > 1e-6 * prog.weight[b]) (planks[b].scaffold ? failingScaffolds : failing).add(planks[b].scaffold ? planks[b].s : planks[b].n);
     });
-    return { stands: res.objective < 1e-6 * planks.length, failing: [...failing].sort((a, b) => a - b) };
+    const sorted = (set) => [...set].sort((a, b) => a - b);
+    return { stands: res.objective < 1e-6 * planks.length, failing: sorted(failing), failingScaffolds: sorted(failingScaffolds) };
   }
 
   /**
@@ -351,6 +358,8 @@
     function addContact(upper, lower, poly, z) {
       const sides = [[upper, 1]];
       if (lower) sides.push([lower, -1]);
+      // Every column belongs to the bodies it acts on, to remove them later.
+      const own = (col) => { upper.cols.push(col); if (lower) lower.cols.push(col); };
       let f = -1;
       if (friction) { f = rows; for (let k = 0; k < 6; k++) addRow(-INF, 0); }
       for (const [x, y] of poly) {
@@ -366,7 +375,7 @@
           const radius = poly.reduce((a, q) => a + Math.hypot(q[0] - cx0, q[1] - cy0), 0) / poly.length * (2 / 3);
           e.push([f + 4, -FRICTION * radius], [f + 5, -FRICTION * radius]);
         }
-        addCol(0, INF, e);
+        own(addCol(0, INF, e));
       }
       if (!friction) return;
       const cx = poly.reduce((a, q) => a + q[0], 0) / poly.length;
@@ -378,7 +387,7 @@
         ty.push([b.row + 1, sign], [b.row + 3, -sign * rz], [b.row + 5, sign * rx]);
         mz.push([b.row + 5, sign]);
       }
-      addCol(-INF, INF, tx); addCol(-INF, INF, ty); addCol(-INF, INF, mz);
+      own(addCol(-INF, INF, tx)); own(addCol(-INF, INF, ty)); own(addCol(-INF, INF, mz));
     }
 
     function contactBetween(upper, lower) {
@@ -390,7 +399,7 @@
       /** Adds a plank and its contacts with the ground and the planks already in. */
       add(p) {
         const weight = p.size[0] * p.size[1] * p.size[2];
-        const body = { p, row: rows, weight };
+        const body = { p, row: rows, weight, cols: [] };
         for (const rhs of [0, 0, weight, 0, 0, 0]) addRow(rhs, rhs);
         if (Math.abs(p.z0) < EPS) {
           const poly = inset(p.footprint, EDGE_MARGIN);
@@ -401,6 +410,18 @@
           else if (Math.abs(p.z1 - q.p.z0) < EPS) contactBetween(q, body); // a plank slid under one already there
         }
         bodies.push(body);
+      },
+      /**
+       * Takes a plank away (a scaffold): its contact forces are fixed to
+       * zero and its equations dropped, so the others stand without it.
+       */
+      remove(p) {
+        const i = bodies.findIndex((b) => b.p === p);
+        if (i < 0) return;
+        const body = bodies[i];
+        for (const c of body.cols) model.changeColBounds(c, 0, 0);
+        for (let k = 0; k < 6; k++) model.changeRowBounds(body.row + k, -INF, INF);
+        bodies.splice(i, 1);
       },
       /** Can the planks added so far stand? */
       stands() {
@@ -471,6 +492,29 @@
     };
   }
 
+  // The moves of a validated document (planks, scaffolds and their removals,
+  // see PlankMD.build), or one move per plank for a result without them.
+  const movesOf = (result) => result.moves || result.planks.map((p, i) => ({ index: i + 1, kind: 'plank', step: p.step, plank: p }));
+  const BLOCKING = ['W-floating', 'W-scaffold-floating'];
+  const blockingOf = (result) => result.diagnostics.filter((d) => d.severity === 'error' || BLOCKING.includes(d.code));
+  const leaningOf = (result) => result.planks.concat(result.scaffolds || []).find((p) => p.lean);
+  // Applies a move to a model (and to the list of bodies present, if given).
+  function apply(model, m, present) {
+    if (m.kind === 'remove') {
+      for (const r of m.scaffolds) { model.remove(r); if (present) present.splice(present.indexOf(r), 1); }
+      return;
+    }
+    const p = m.plank || m.scaffold;
+    model.add(p);
+    if (present) present.push(p);
+  }
+  // The index (0-based) of the last move of each step that has one.
+  function stepEnds(moves) {
+    const ends = new Map();
+    moves.forEach((m, i) => ends.set(m.step, i));
+    return ends;
+  }
+
   /**
    * Measures the tilt at the end of one step, on demand: { step, stands,
    * tilt, direction, diagnostics } (tilt 0 when it does not stand), or null
@@ -478,12 +522,13 @@
    */
   function stepTilt(highs, result, stepNumber) {
     const step = result.steps.find((s) => s.number === stepNumber);
-    const planks = result.planks.filter((p) => p.step <= stepNumber);
-    if (!step || !planks.length) return null;
-    if (result.diagnostics.some((d) => d.severity === 'error' || d.code === 'W-floating')) return null;
+    const moves = movesOf(result);
+    const end = stepEnds(moves).get(stepNumber);
+    if (!step || end === undefined) return null;
+    if (blockingOf(result).length || leaningOf(result)) return null;
     const model = incremental(highs, { friction: true });
     try {
-      for (const p of planks) model.add(p);
+      for (let i = 0; i <= end; i++) apply(model, moves[i]);
       const stands = model.stands();
       const m = stands ? worstTilt(model) : { degrees: 0, direction: null };
       return { step: stepNumber, stands, tilt: m.degrees, direction: m.direction,
@@ -493,76 +538,118 @@
     }
   }
 
+  const scaffoldRange = (list) => {
+    const s = list.map((r) => r.s);
+    if (s.length === 1) return `scaffold ${s[0]}`;
+    return s.every((v, i) => !i || v === s[i - 1] + 1) ? `scaffolds ${s[0]} to ${s[s.length - 1]}` : `scaffolds ${s.slice(0, -1).join(', ')} and ${s[s.length - 1]}`;
+  };
+  // What a move is, in the messages.
+  const moveName = (m) => (m.kind === 'plank' ? `plank ${m.plank.n}` : m.kind === 'scaffold' ? `scaffold ${m.scaffold.s}` : `the removal of ${scaffoldRange(m.scaffolds)}`);
+  const moveDone = (m) => (m.kind === 'remove'
+    ? `${scaffoldRange(m.scaffolds)} ${m.scaffolds.length > 1 ? 'are' : 'is'} removed`
+    : `${moveName(m)} is placed`);
+
   /**
    * The whole balance check. `tilts` says at the end of which steps the tilt
    * is measured: 'all', 'last', 'none' or a list of step numbers. Default:
    * 'all' up to TILT_ALL_MAX planks, 'last' above. Steps not measured come
    * back with tilt: null.
+   * Returns { skipped, stable, placements: [{ n, stands }] (after each
+   * plank), moves: [{ move, stands }] (after each move, scaffolds and
+   * removals included), steps, diagnostics, complete, tilts }.
    */
   function analyse(highs, result, { onProgress, onPartial, tilts } = {}) {
-    const out = { skipped: null, stable: true, placements: [], steps: [], diagnostics: [], complete: false, tilts: null };
-    const blocking = result.diagnostics.filter((d) => d.severity === 'error' || d.code === 'W-floating');
-    if (blocking.length) {
+    const out = { skipped: null, stable: true, placements: [], moves: [], steps: [], diagnostics: [], complete: false, tilts: null };
+    if (blockingOf(result).length) {
       out.skipped = 'the model has errors or floating planks: fix them first';
       out.complete = true;
       return out;
     }
+    const lean = leaningOf(result);
+    if (lean) {
+      out.skipped = 'the model has leaning planks, which it cannot model yet: use the drop test';
+      out.diagnostics.push({
+        code: 'I-unchecked-lean', severity: 'info', step: lean.step, line: lean.line,
+        ...(lean.scaffold ? { scaffold: lean.s } : { plank: lean.n }),
+        message: `The balance check cannot model leaning planks yet (${lean.scaffold ? `scaffold ${lean.s}` : `plank ${lean.n}`} leans): use the drop test to see whether the construction stands.`,
+      });
+      out.complete = true;
+      return out;
+    }
     const planks = result.planks;
+    const moves = movesOf(result);
+    const ends = stepEnds(moves);
     const mode = tilts || (planks.length <= TILT_ALL_MAX ? 'all' : 'last');
     out.tilts = mode;
-    const withPlanks = result.steps.filter((s) => planks.some((p) => p.step === s.number)).map((s) => s.number);
+    const withPlanks = result.steps.filter((s) => ends.has(s.number)).map((s) => s.number);
     const measured = new Set(Array.isArray(mode) ? mode
       : mode === 'all' ? withPlanks : mode === 'last' ? withPlanks.slice(-1) : []);
-    // Work units: one per placement, and one per tilt direction per measured
+    // Work units: one per move, and one per tilt direction per measured
     // step (a tilt costs about two placements).
-    const total = planks.length + 2 * DIRECTIONS.length * withPlanks.filter((n) => measured.has(n)).length;
+    const total = moves.length + 2 * DIRECTIONS.length * withPlanks.filter((n) => measured.has(n)).length;
     let done = 0;
     const progress = (k) => { done += k; if (onProgress) onProgress(Math.min(done, total), total); };
     const partial = () => { if (onPartial) onPartial(JSON.parse(JSON.stringify(out))); };
 
-    // Pass 1, fast: does it stand after every placement? The frictionless
-    // model checks every placement (under vertical gravity, friction is
-    // rarely needed); the model with friction follows behind and is only
-    // brought up to date when a placement fails without friction.
+    // Pass 1, fast: does it stand after every move? The frictionless model
+    // checks every move (under vertical gravity, friction is rarely
+    // needed); the model with friction follows behind and is only brought
+    // up to date when a move fails without friction.
     const fast = incremental(highs, { friction: false });
     const full = incremental(highs, { friction: true });
+    const present = []; // the bodies in place after each move, for the diagnosis
+    const presentAt = [];
     let fullCount = 0;
     try {
-      for (let n = 1; n <= planks.length; n++) {
-        fast.add(planks[n - 1]);
+      for (let i = 0; i < moves.length; i++) {
+        apply(fast, moves[i], present);
+        presentAt.push(present.slice());
         let ok = fast.stands();
         if (!ok) {
-          while (fullCount < n) full.add(planks[fullCount++]);
+          while (fullCount <= i) apply(full, moves[fullCount++]);
           ok = full.stands();
         }
-        out.placements.push({ n, stands: ok });
+        out.moves.push({ move: moves[i].index, stands: ok });
+        if (moves[i].kind === 'plank') out.placements.push({ n: moves[i].plank.n, stands: ok });
         progress(1);
       }
     } finally {
       fast.dispose();
       full.dispose();
     }
-    for (let i = 0; i < out.placements.length; i++) {
-      if (out.placements[i].stands) continue;
+    // The real plank count at a move: the plank placed, or the last one before.
+    const plankAt = (i) => { for (let k = i; k >= 0; k--) if (moves[k].kind === 'plank') return moves[k].plank.n; return 0; };
+    for (let i = 0; i < out.moves.length; i++) {
+      if (out.moves[i].stands) continue;
       let j = i;
-      while (j + 1 < out.placements.length && !out.placements[j + 1].stands) j++;
-      const first = planks[i], last = planks[j];
+      while (j + 1 < out.moves.length && !out.moves[j + 1].stands) j++;
+      const first = moves[i], last = moves[j];
       // Which planks give way, at the moment the construction starts to fall.
       // The plank just placed is often the cheapest one to blame (it only has
       // to lean a little), while what really gives way is below it: first ask
       // which planks give way if the new one is held in place.
-      const upTo = planks.slice(0, i + 1);
-      const held = balance(highs, upTo, { hold: [planks[i].n] });
-      const { failing } = held && held.failing.length ? held : balance(highs, upTo);
-      const toEnd = j === planks.length - 1;
+      const upTo = presentAt[i];
+      const newcomer = first.plank || first.scaffold;
+      const held = newcomer ? balance(highs, upTo, { hold: [newcomer] }) : null;
+      const blame = held && (held.failing.length || held.failingScaffolds.length) ? held : balance(highs, upTo);
+      const { failing, failingScaffolds } = blame;
+      const toEnd = j === moves.length - 1;
       const listed = failing.length > 8 ? `${failing.slice(0, 8).join(', ')} and ${failing.length - 8} more` : failing.join(', ');
-      const who = failing.length ? ` (plank${failing.length > 1 ? 's' : ''} ${listed} cannot stay in balance)` : '';
+      const who = failing.length ? ` (plank${failing.length > 1 ? 's' : ''} ${listed} cannot stay in balance)`
+        : failingScaffolds.length ? ` (scaffold${failingScaffolds.length > 1 ? 's' : ''} ${failingScaffolds.join(', ')} cannot stay in balance)` : '';
       const span = toEnd
-        ? (i === j ? `When plank ${first.n} is placed` : `From plank ${first.n} on`)
-        : (i === j ? `While plank ${first.n} is the last one placed` : `From plank ${first.n} to plank ${last.n}`);
+        ? (i === j ? `When ${moveDone(first)}` : `From ${moveName(first)} on`)
+        : (i === j ? (first.kind === 'remove' ? `Right after ${moveDone(first)}` : `While ${moveName(first)} is the last one placed`) : `From ${moveName(first)} to ${moveName(last)}`);
+      const removal = first.kind === 'remove' ? ' It does not stand on its own without the scaffolding.' : '';
       out.diagnostics.push({
-        code: 'I-unstable', severity: 'info', plank: first.n, step: first.step, line: first.line, until: last.n, failing,
-        message: `${span}, the construction falls${who}.` +
+        code: 'I-unstable', severity: 'info', plank: plankAt(i) || undefined, step: first.step,
+        line: (first.plank || first.scaffold || first.scaffolds[0]).line, until: plankAt(j) || undefined,
+        move: first.index, untilMove: last.index, kind: first.kind, untilKind: last.kind, failing, failingScaffolds,
+        ...(first.kind === 'scaffold' ? { scaffold: first.scaffold.s } : {}),
+        ...(first.kind === 'remove' ? { removed: first.scaffolds.map((r) => r.s) } : {}),
+        ...(last.kind === 'scaffold' ? { untilScaffold: last.scaffold.s } : {}),
+        ...(last.kind === 'remove' ? { untilRemoved: last.scaffolds.map((r) => r.s) } : {}),
+        message: `${span}, the construction falls${who}.${removal}` +
           (toEnd ? '' : ' It stands again afterwards: hold it, or change the placement order.'),
       });
       out.stable = false;
@@ -571,20 +658,20 @@
     partial();
 
     // Pass 2, slower: how much tilt does it withstand at the end of each
-    // measured step? One model with friction grows step by step; each step's
-    // result is reported as soon as it is known.
+    // measured step? One model with friction grows move by move; each
+    // step's result is reported as soon as it is known.
     const tiltModel = measured.size ? incremental(highs, { friction: true }) : null;
     let count = 0;
     try {
       for (const step of result.steps) {
-        const upTo = planks.filter((p) => p.step <= step.number).length;
-        if (!upTo || !withPlanks.includes(step.number)) continue;
-        const stands = out.placements[upTo - 1].stands;
+        const end = ends.get(step.number);
+        if (end === undefined) continue;
+        const stands = out.moves[end].stands;
         if (!measured.has(step.number)) {
           out.steps.push({ step: step.number, stands, tilt: null, direction: null });
           continue;
         }
-        while (count < upTo) tiltModel.add(planks[count++]);
+        while (count <= end) apply(tiltModel, moves[count++]);
         partial(); // the steps skipped so far are known: say so before measuring
         let m = { degrees: 0, direction: null };
         if (stands) m = worstTilt(tiltModel, () => progress(2));
