@@ -91,8 +91,8 @@ planchette par défaut (<code>plank: [15, 3, 1]</code>, <code>unit_mm: 7.8</code
 leur correspond. Toutes les autres planchettes conviennent aussi : déclarez
 leurs proportions dans le frontmatter.<br>
 KAPLA® est une marque déposée de son propriétaire. PlankMD est un projet
-indépendant ; il n'est ni affilié au propriétaire de la marque, ni parrainé,
-ni approuvé par lui.</p>
+indépendant ; il n'est affilié à aucun fabricant de planchettes, ni parrainé
+ou approuvé par aucun d'eux.</p>
 
 PlankMD suit les principes de conception de [LearnSpec](https://learnspec.org),
 une suite ouverte de formats Markdown pour l'apprentissage.
