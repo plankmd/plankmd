@@ -174,8 +174,8 @@ Compatible with KAPLA® planks: the default plank size (`plank: [15, 3, 1]`,
 proportions in the frontmatter.
 
 KAPLA® is a registered trademark of its owner. PlankMD is an independent
-project; it is not affiliated with, sponsored or endorsed by the trademark
-owner.
+project; it is not affiliated with, sponsored or endorsed by any plank
+manufacturer.
 
 ## Design
 

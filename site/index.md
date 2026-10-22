@@ -86,8 +86,8 @@ its corner. [Open this tower in the player](/player/#square-tower){target="_self
 (<code>plank: [15, 3, 1]</code>, <code>unit_mm: 7.8</code>) matches them. Any other
 planks work too: declare their proportions in the frontmatter.<br>
 KAPLA® is a registered trademark of its owner. PlankMD is an independent
-project; it is not affiliated with, sponsored or endorsed by the trademark
-owner.</p>
+project; it is not affiliated with, sponsored or endorsed by any plank
+manufacturer.</p>
 
 PlankMD follows the design principles of [LearnSpec](https://learnspec.org),
 an open suite of Markdown formats for learning.
