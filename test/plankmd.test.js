@@ -144,10 +144,30 @@ test('guides chained end to end measure a long gap', () => {
   assert.deepEqual(r.diagnostics, []);
 });
 
-test('a guide holds nothing up and needs no support', () => {
-  const r = validate(block(['guide flat-x 0 0 0', 'flat-y 0 0 1', 'guide flat-x 0 20 5']));
-  // The plank on the guide floats; each guide touches at most one plank, so both are loose.
-  assert.deepEqual(codes(r), ['W-guide-loose', 'W-floating', 'W-guide-loose']);
+test('a guide holds nothing up', () => {
+  const r = validate(block(['guide flat-x 0 0 0', 'flat-y 0 0 1']));
+  // The plank on the guide floats; the guide touches one plank only, so it is loose.
+  assert.deepEqual(codes(r), ['W-guide-loose', 'W-floating']);
+});
+
+test('a guide is laid on what is already there, never in the air', () => {
+  // Two walls two layers high, the gap between their tops measured on the first layer.
+  const walls = ['flat-x 0 0 0', 'flat-x 0 12 0', 'flat-y 0 0 1', 'flat-y 12 0 1'];
+  const r = validate(block(walls.concat(['guide flat-y 3 0 1 repeat=3 offset=3,0,0'])));
+  assert.deepEqual(r.diagnostics, []);
+  assert.deepEqual(r.guides.map((g) => g.after), [4, 4, 4]);
+  // Written above the planks it lies on, it would be shown in the air.
+  const early = validate(block(['guide flat-y 3 0 1 repeat=3 offset=3,0,0'].concat(walls)));
+  assert.deepEqual(codes(early), ['W-guide-floating', 'W-guide-floating', 'W-guide-floating']);
+  assert.deepEqual(early.guides.map((g) => g.after), [0, 0, 0]);
+  // With nothing under the gap at all, it floats too.
+  const air = validate(block(['flat-x 0 0 0', 'flat-x 18 0 0', 'flat-y 0 0 1', 'flat-y 27 0 1', 'guide flat-y 3 0 1 repeat=8 offset=3,0,0']));
+  assert.ok(codes(air).includes('W-guide-floating'));
+});
+
+test('a guide is laid after the last move written above it', () => {
+  const r = validate(block(['flat-x 0 0 0', 'flat-x 0 6 0']) + block(['guide flat-x 0 3 1', 'flat-x 0 0 1', 'flat-x 0 6 1']));
+  assert.deepEqual(r.guides.map((g) => g.after), [2]);
 });
 
 test('a guide only lives in its step', () => {

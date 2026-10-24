@@ -347,13 +347,21 @@ flat-y 12 0 1
 Un gabarit ne fait pas partie de la construction :
 
 - **Il n'est montré que pendant son étape**, en fantôme (translucide, avec
-  ses arêtes), et disparaît dès l'étape suivante.
+  ses arêtes), et disparaît dès l'étape suivante. Dans son étape, il est posé
+  là où se trouve sa ligne : une fois posées les planchettes et les étais
+  écrits au-dessus de lui dans l'étape. Un lecteur qui montre une étape
+  planchette par planchette DEVRAIT montrer le gabarit à partir de là.
 - **Il n'a pas de numéro et ne compte pas** dans le total des planchettes ni
   dans `inventory`.
 - **Il ne porte rien.** Une planchette qui ne repose que sur un gabarit
   flotte.
-- **Il n'a pas besoin d'appui** : il peut rester en l'air pour mesurer
-  l'écart entre deux murs en hauteur.
+- **Il se pose comme une planchette** : sur le sol, sur les planchettes et
+  les étais posés avant lui, ou sur un gabarit de son étape posé avant lui.
+  Un gabarit qui ne repose sur rien quand il est posé (`W-guide-floating`)
+  apparaît suspendu en l'air : écris-le après les planchettes sur lesquelles
+  il repose. Un écart sous lequel il n'y a rien du tout, comme le haut d'un
+  arc en encorbellement, ne se mesure pas là : mesure-le plus bas, ou ne mets
+  pas de gabarit.
 
 Un gabarit est aussi une **affirmation sur l'écart** : les planchettes de son
 étape doivent lui laisser la place. Un gabarit qui partage un volume avec une
@@ -534,6 +542,7 @@ fichier.
 | `W-view` | avertissement | Une indication de vue est illisible (direction inconnue, élévation hors limites, zoom non positif, `focus` qui ne nomme aucune planchette posée avant la fin de son étape). L'indication est ignorée |
 | `W-unchecked-rotation` | avertissement | Le validateur ne sait pas vérifier exactement une planchette tournée. Il DOIT le dire plutôt que de déclarer la planchette valide |
 | `E-guide-overlap` | erreur | Un gabarit partage un volume avec une vraie planchette posée avant lui ou dans la même étape : l'écart qu'il mesure est trop petit |
+| `W-guide-floating` | avertissement | Un gabarit ne repose sur rien quand il est posé : ni sur le sol, ni sur une planchette ou un étai posé avant lui, ni sur un gabarit de son étape posé avant lui |
 | `W-guide-loose` | avertissement | Une chaîne de gabarits touche moins de deux vraies planchettes posées jusqu'à la fin de son étape : mal placée, ou écart trop large |
 
 `W-floating` est un avertissement et non une erreur, parce qu'on peut tenir

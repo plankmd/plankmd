@@ -33,7 +33,7 @@ test('the French explanations recognise the validator messages', () => {
   const docs = [
     block(['flat-x 0 0 0', 'flat-x 0 0 0', 'flat-x 0 0 5', 'flat-x 0 0 -1 id=a', 'flat-y 0 0 1 id=a', 'bogus 1 2 3',
       'flat-x 1 2', 'flat-x 0 0 0 foo=1', 'flat-x 0 0 0 rot=x', 'flat-x 0 0 0 repeat=2', 'flat-x 0 0 0 x']),
-    block(['flat-x 0 0 0', 'flat-x 0 6 0', 'guide flat-x 0 2 0', 'guide flat-x 0 40 0'],
+    block(['flat-x 0 0 0', 'flat-x 0 6 0', 'guide flat-x 0 2 0', 'guide flat-x 0 40 0', 'guide flat-x 0 20 5'],
       '---\nplankmd: "0.1"\ninventory: 1\ndifficulty: x\nunit_mm: -1\nplank: [1]\n---\n'),
     block(['flat-x 0 0 0'], '---\nfoo\n  bar: 1\n---\n'),
   ];

@@ -2,7 +2,7 @@
 plankmd: "0.2"
 translation-of: arc-de-triomphe.plank.md
 lang: fr
-source-hash: 024cea87e7f8123729f60c31591c3ab12264ec69d6f918bfcec32e4b51cb504d
+source-hash: 2fab1ebe9fef5a264ee681efb09d78151fcf945e26ceb142444fd4b70509d9cd
 title: Arc de triomphe
 license: CC0-1.0
 ---
@@ -37,9 +37,8 @@ Cinq fois. Ne va pas plus loin, sinon la pile bascule.
 
 ## Étape 3 : la pile de droite se penche
 
-Fais de même à droite, en glissant vers la gauche. En haut, il ne doit
-rester qu'une largeur de planchette entre les deux tours : vérifie-le avec
-une planchette posée en travers de l'espace, puis retire-la.
+Fais de même à droite, en glissant vers la gauche. En haut, il ne reste
+qu'une largeur de planchette entre les deux tours.
 
 ```plank
 ```

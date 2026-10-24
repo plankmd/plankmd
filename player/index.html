@@ -555,7 +555,8 @@ function draw() {
   for (const r of standing) group.add(scaffoldMesh(r, move && move.scaffold === r, scaffoldProblems.get(r.s)));
   const goneNow = move && move.kind === 'remove' ? move.scaffolds : [];
   for (const r of goneNow) group.add(scaffoldMesh(r, false, null, true));
-  const guides = state.guides.filter((g) => g.step === step);
+  // A guide is laid once the planks written above it in its step are placed.
+  const guides = state.guides.filter((g) => g.step === step && g.after <= k);
   const guideProblem = new Map();
   for (const d of state.diagnostics) {
     if (!d.guide || d.step !== step) continue;

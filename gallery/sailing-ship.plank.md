@@ -143,9 +143,9 @@ Pile fifteen planks flat on top of each other, across the deck, to make a sail. 
 
 ```plank
 # guides: from the castle wall to the first sail, then from one sail to the other
-guide flat-y 15 0 12
-guide edge-y 18 0 12
-guide edge-y 19 0 12
+guide flat-y 15 0 11
+guide edge-y 18 0 11
+guide edge-y 19 0 11
 guide flat-y 23 0 11
 guide edge-y 26 0 11
 flat-y 20 0 11 repeat=15 offset=0,0,1

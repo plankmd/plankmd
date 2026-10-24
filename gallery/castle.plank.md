@@ -26,7 +26,7 @@ guide flat-x 0 63 0 repeat=3 offset=0,3,0
 guide flat-x 60 63 0 repeat=3 offset=0,3,0
 # guides: three lengths between the towers, along the front and along the left side
 guide flat-x 15 0 0 repeat=3 offset=15,0,0
-guide flat-y 0 15 1 repeat=3 offset=0,15,0
+guide flat-y 0 15 0 repeat=3 offset=0,15,0
 flat-x 0 0 0  repeat=1 offset=0,0,2
 flat-x 0 12 0 repeat=1 offset=0,0,2
 flat-y 0 0 1 repeat=1 offset=0,0,2
