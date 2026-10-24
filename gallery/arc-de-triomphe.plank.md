@@ -58,7 +58,7 @@ flat-y 12 15 9 repeat=5 offset=1.5,0,2
 
 ## Step 3: the right pier leans
 
-Do the same on the right, sliding to the left. At the top, only one plank width must remain between the two towers: check it with a plank laid across the gap, then take it away.
+Do the same on the right, sliding to the left. At the top, only one plank width remains between the two towers.
 
 ```plank
 # cell at y = 0
@@ -71,7 +71,6 @@ flat-x 30 15 8 repeat=5 offset=-1.5,0,2
 flat-x 30 27 8 repeat=5 offset=-1.5,0,2
 flat-y 42 15 9 repeat=5 offset=-1.5,0,2
 flat-y 30 15 9 repeat=5 offset=-1.5,0,2
-guide flat-y 21 0 17                        # gap at the top: one width
 ```
 
 ## Step 4: the vault

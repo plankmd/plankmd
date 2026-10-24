@@ -2,7 +2,7 @@
 plankmd: "0.2"
 translation-of: notre-dame.plank.md
 lang: fr
-source-hash: 786d87dfc24ea98230d004eb868215eed495aee1625b70e376051be4a6908e30
+source-hash: acd18b47c7b2462c0ab7427f773fa65b2d23aef482ece34974f4cd216cc832fa
 title: Notre-Dame de Paris
 license: CC0-1.0
 ---
@@ -151,8 +151,7 @@ sur le muret.
 ## Étape 14 : les murs de la nef
 
 Construis les deux hauts murs de la nef sur les planchers des bas-côtés,
-hauts de huit planchettes. Pour les espacer, pose quatre planchettes côte à
-côte entre les murs comme règle, puis retire-les.
+hauts de huit planchettes, au ras du bout des planchers.
 
 ```plank
 ```

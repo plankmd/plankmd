@@ -630,6 +630,21 @@
     return build(doc).planks;
   }
 
+  /**
+   * Sets `after` on every guide: the move after which it is laid, that of the
+   * last plank or scaffold of its step written above it, or the last move
+   * before its step. A guide is shown from there to the end of its step.
+   */
+  function layGuides(rulers, moves) {
+    for (const g of rulers) {
+      g.after = 0;
+      for (const m of moves) {
+        const p = m.plank || m.scaffold;
+        if (m.step < g.step || (m.step === g.step && p && p.line < g.line)) g.after = Math.max(g.after, m.index);
+      }
+    }
+  }
+
   /** Expands the guide lines of every step. Guides have no plank number. */
   function guides(doc) {
     return doc.steps.flatMap((step) => step.lines.filter((line) => line.guide).flatMap((line) => expandLine(line, doc.meta)));
@@ -785,6 +800,18 @@
     }
     const reported = new Set();
     rulers.forEach((g, i) => { g.g = i + 1; });
+    layGuides(rulers, moves);
+    // A guide is laid like a plank: on the ground, on what is already there,
+    // or on a guide laid before it.
+    const laid = [];
+    for (const g of rulers) {
+      const under = planks.concat(scaffolds).filter((p) => p.move <= g.after && !(p.removed <= g.after));
+      if (g.z0 > EPS && !under.concat(laid.filter((h) => h.step === g.step)).some((q) => restsOn(g, q))) {
+        diag(diagnostics, 'W-guide-floating', `guide ("${g.source}") rests on nothing when it is laid: write it after the planks it lies on`,
+          { guide: g.g, step: g.step, line: g.line });
+      }
+      laid.push(g);
+    }
     for (const g of rulers) {
       // `guide` is the guide's 1-based index in `guides`, as `plank` is for planks.
       const where = { guide: g.g, step: g.step, line: g.line };

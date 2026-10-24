@@ -118,7 +118,7 @@ flat-y 12 0 1 repeat=5 offset=0,0,2   # placed 4th, 8th, 12th...
 
 Builders space planks by laying other planks in the gap as a ruler, then
 taking them away. Write those rulers as **guides**: a line starting with
-`guide`, placed at the start of the step that needs it.
+`guide`, in the step that needs it.
 
 ```plank
 guide flat-x 0 3 0 repeat=3 offset=0,3,0   # three widths between the two walls
@@ -128,6 +128,17 @@ flat-x 0 12 0
 
 - A guide is not built: it is shown as a ghost during its step only, has no
   plank number, does not count towards `inventory`, and holds nothing up.
+- **A guide is laid like a plank, never in the air.** It appears where its
+  line stands, once the planks written above it in the step are placed, so
+  it must lie on the ground, on those planks, or on a guide written before
+  it. Write it **right after the planks it lies on and before the planks
+  whose gap it measures**: a guide at z = 5 comes after the layer that ends
+  at z = 5, not at the top of the step. After a `repeat` block, it appears
+  once the whole block is placed.
+- Measure a gap where there is something under it. A gap over empty space
+  (the top of a corbelled arch, between two cantilevers, over a nave) cannot
+  hold a ruler: measure it lower down, at the foot of the piers, or leave
+  the guide out and give the distance in the step text.
 - Guides laid end to end form a chain. Every chain must touch **two real
   planks**, the two sides of the gap, placed in the same step or before.
 - Use a guide whenever the builder has to leave an empty space that is not
@@ -138,7 +149,8 @@ flat-x 0 12 0
 
 The validator then checks your gaps too: a guide that goes through a plank
 means the gap is too small (`E-guide-overlap`), a chain that touches only
-one plank means it is too wide or misplaced (`W-guide-loose`).
+one plank means it is too wide or misplaced (`W-guide-loose`), and a guide
+with nothing under it when it is laid hangs in the air (`W-guide-floating`).
 
 ### Scaffolds: hold up what cannot stand yet
 
@@ -249,7 +261,8 @@ the whole model. Add views only where the default hides something.
 3. Write the lines bottom-up, in the order a person would place them, one
    step per meaningful stage (base, walls, roof...). Five to twelve steps for
    a large model, one to four for a small one.
-4. Add a guide for every gap the builder has to measure.
+4. Add a guide for every gap the builder has to measure, written just after
+   the planks it lies on.
 5. Before answering, check every plank against rules 1 to 4, then count.
 6. Output only the `.plank.md` file, in a single Markdown code block, unless
    asked otherwise.
@@ -326,6 +339,9 @@ plank on: reduce the overhang, add a counterweight at the back, or place the
 counterweight earlier. `I-fragile` means it stands but barely.
 `E-guide-overlap` and `W-guide-loose` mean a gap is wrong: fix the planks, not
 the guide, unless the guide measures the wrong distance.
+`W-guide-floating` means the guide hangs in the air: move its line below the
+planks it lies on, lower it onto a layer, or remove it if the gap is over
+empty space.
 `W-scaffold-floating` means a plank still needed its scaffold when it was
 removed: add counterweights, or remove the scaffold later with `until`.
 `W-scaffold-wedged` means the scaffold cannot slide out: leave one side
