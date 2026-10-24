@@ -316,12 +316,19 @@ flat-y 12 0 1
 A guide is not part of the construction:
 
 - **It is shown only during its own step**, as a ghost (translucent,
-  outlined), and disappears from the next step on.
+  outlined), and disappears from the next step on. Within its step, it is
+  laid where its line stands: once the planks and scaffolds written above it
+  in the step are placed. A player that shows a step plank by plank SHOULD
+  show the guide from that point on.
 - **It has no plank number and does not count** towards the plank total or
   the `inventory`.
 - **It holds nothing up.** A plank resting only on a guide floats.
-- **It needs no support itself**: it may hang in the air to measure a gap
-  between two upper walls.
+- **It is laid like a plank**: on the ground, on the planks and scaffolds
+  placed before it, or on a guide of its step laid before it. A guide with
+  nothing under it when it is laid (`W-guide-floating`) is shown hanging in
+  the air: write it after the planks it lies on. A gap with nothing under it
+  at all, such as the top of a corbelled arch, cannot be measured there:
+  measure it lower down, or leave the guide out.
 
 A guide is also an **assertion about the gap**: the planks of its step must
 leave room for it. A guide that shares a volume with a real plank, placed
@@ -489,6 +496,7 @@ number in the file.
 | `W-view` | warning | A view hint does not parse (unknown direction, elevation out of range, zoom not positive, `focus` naming no plank placed by the end of its step). The hint is ignored |
 | `W-unchecked-rotation` | warning | The validator cannot check a rotated plank exactly. It MUST say so rather than report the plank as valid |
 | `E-guide-overlap` | error | A guide shares a volume with a real plank placed before it or in the same step: the gap it measures is too small |
+| `W-guide-floating` | warning | A guide rests on nothing when it is laid: on neither the ground, nor a plank or scaffold placed before it, nor a guide of its step laid before it |
 | `W-guide-loose` | warning | A chain of guides touches fewer than two real planks placed up to the end of its step: misplaced, or the gap is too wide |
 
 `W-floating` is a warning rather than an error because a builder can hold a

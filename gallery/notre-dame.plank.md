@@ -118,11 +118,11 @@ Now the rose window, the big round window of the west front, here made of steps.
 ```plank
 # rulers: one width at the bottom of the window, three widths above it
 guide flat-y 21 0 19
-guide flat-y 18 0 20 repeat=3 offset=3,0,0
 # window frame, z = 19 to 24
 flat-y 15 0 19 repeat=6 offset=0,0,1 color=rose
 flat-y 18 0 19 color=rose
 flat-y 24 0 19 color=rose
+guide flat-y 18 0 20 repeat=3 offset=3,0,0
 flat-y 27 0 19 repeat=6 offset=0,0,1 color=rose
 # towers, layers 23 to 26
 flat-y 0 0 23 repeat=2 offset=0,0,2
@@ -267,11 +267,9 @@ flat-x 28.5 15 8 repeat=30 offset=0,3,0
 
 ## Step 14: the nave walls
 
-Build the two high walls of the nave on top of the aisle floors, eight planks high. To space them, lay four planks side by side between the walls as a ruler, then take them away.
+Build the two high walls of the nave on top of the aisle floors, eight planks high, flush with the inner ends of the floors.
 
 ```plank
-# ruler: four widths between the nave walls
-guide flat-y 16.5 15 9 repeat=4 offset=3,0,0
 # nave walls (x = 13.5 and x = 28.5), z = 9 to 16
 flat-y 13.5 15 9 repeat=8 offset=0,0,1
 flat-y 13.5 30 9 repeat=8 offset=0,0,1

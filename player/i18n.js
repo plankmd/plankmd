@@ -370,6 +370,11 @@
         (m) => `Le guide (${q(m[1])}) traverse la planchette ${m[2]} (ligne ${m[3]}) : l'écart est trop petit`],
       (d) => `Le guide traverse la planchette ${d.other} : l'écart est trop petit`,
     ],
+    'W-guide-floating': [
+      [/^guide \("(.*)"\) rests on nothing when it is laid: write it after the planks it lies on$/,
+        (m) => `Le guide (${q(m[1])}) ne repose sur rien quand il est posé : écris-le après les planchettes sur lesquelles il est posé`],
+      () => 'Le guide ne repose sur rien quand il est posé : écris-le après les planchettes sur lesquelles il est posé',
+    ],
     'W-guide-loose': [
       [/^guide \("(.*?)"\) (?:only touches plank (\d+)|touches no plank)(?:, even with the (\d+) guides? it is chained to)?: /, (m) => {
         const chained = m[3] ? Number(m[3]) : 0;

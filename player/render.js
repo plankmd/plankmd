@@ -147,7 +147,7 @@
      *   fadeBelow: planks numbered below this one are faded,
      *   lit: the number of a plank to highlight,
      *   drop: { n, t } lifts plank n by (1 - t) of a few plank heights (t from 0 to 1),
-     *   step: guides of this step are shown,
+     *   step: guides of this step are shown, each once the moves before it are done,
      *   azimuth, elevation: the camera direction in degrees (default 35, 28),
      *   zoom: 1 frames the whole model with a margin (it fills 80% of the
      *     picture), more is closer,
@@ -201,7 +201,10 @@
         m.position.copy(m.userData.home);
         if (view.drop && view.drop.n === p.n) m.position.y += (1 - view.drop.t) * Math.max(4, p.size[2] * 3);
       }
-      for (const g of guides) g.visible = view.step !== undefined && g.userData.guide.step === view.step;
+      for (const g of guides) {
+        const r = g.userData.guide;
+        g.visible = view.step !== undefined && r.step === view.step && !(r.after > move);
+      }
       const az = (view.azimuth === undefined ? 35 : view.azimuth) * deg;
       const el = Math.min(89, view.elevation === undefined ? 28 : view.elevation) * deg;
       const target = view.target ? toScene(view.target) : bounds.center;

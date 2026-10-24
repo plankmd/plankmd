@@ -41,7 +41,6 @@ flat-x 45 0 0  repeat=8 offset=-1.5,0,2
 flat-x 45 12 0 repeat=8 offset=-1.5,0,2
 flat-y 57 0 1  repeat=8 offset=-1.5,0,2
 flat-y 45 0 1  repeat=8 offset=-1.5,0,2
-guide flat-y 25.5 0 14 repeat=3 offset=3,0,0   # gap at the top: three widths
 ```
 
 ## Step 3: the deck
