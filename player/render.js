@@ -36,25 +36,30 @@
 
   /**
    * A renderer of `width` × `height` pixels. Colours are CSS colours.
+   * `transparent`: no background and no floor, for a picture laid on a page.
+   * `fade`: how the faded planks look, { mix, opacity, edges }: `mix` of the
+   * background colour in their own (0.55), their `opacity` (1) and that of
+   * their edges (0.25).
    * Returns { canvas, setModel(result), draw(view), bounds }.
    */
-  function create({ width, height, background = '#f3efe8', ground = '#e6dfd3', edges = '#5a4630', pixelRatio = 1 }) {
+  function create({ width, height, background = '#f3efe8', ground = '#e6dfd3', edges = '#5a4630', pixelRatio = 1, transparent = false, fade = {} }) {
+    const FADE = { mix: 0.55, opacity: 1, edges: 0.25, ...fade };
     const scaffoldMaterial = new THREE.MeshLambertMaterial({ map: stripes() });
     const scaffoldLit = new THREE.MeshLambertMaterial({ map: scaffoldMaterial.map, emissive: new THREE.Color(0x2a3440) });
     const scaffoldGone = new THREE.MeshLambertMaterial({ map: scaffoldMaterial.map, transparent: true, opacity: 0.35, depthWrite: false });
     const scaffoldEdge = new THREE.LineBasicMaterial({ color: 0x4a5560 });
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: transparent });
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(width, height, false);
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(background);
+    if (!transparent) scene.background = new THREE.Color(background);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 0.75));
     const sun = new THREE.DirectionalLight(0xffffff, 0.6);
     sun.position.set(40, 80, 50);
     scene.add(sun);
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshLambertMaterial({ color: ground }));
     floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
+    if (!transparent) scene.add(floor);
     const camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 20000);
     const group = new THREE.Group();
     scene.add(group);
@@ -62,7 +67,7 @@
     const bg = new THREE.Color(background);
     const geometries = new Map(), materials = new Map(), edgeSets = new Map();
     const edgeMaterial = new THREE.LineBasicMaterial({ color: edges });
-    const fadedEdge = new THREE.LineBasicMaterial({ color: edges, transparent: true, opacity: 0.25 });
+    const fadedEdge = new THREE.LineBasicMaterial({ color: edges, transparent: true, opacity: FADE.edges });
     const guideMaterial = new THREE.MeshBasicMaterial({ color: 0x3f6fa8, transparent: true, opacity: 0.2, depthWrite: false });
     const guideEdge = new THREE.LineDashedMaterial({ color: 0x3f6fa8, dashSize: 0.9, gapSize: 0.5 });
     const geometry = ([sx, sy, sz]) => {
@@ -79,8 +84,9 @@
       const key = `${color}|${kind}`;
       if (!materials.has(key)) {
         const c = new THREE.Color(color);
-        if (kind === 'faded') c.lerp(bg, 0.55);
+        if (kind === 'faded') c.lerp(bg, FADE.mix);
         const m = new THREE.MeshLambertMaterial({ color: c, map: root.PlankMDWood.texture(THREE) });
+        if (kind === 'faded' && FADE.opacity < 1) Object.assign(m, { transparent: true, opacity: FADE.opacity });
         if (kind === 'lit') m.emissive = new THREE.Color(0x6b3f00);
         materials.set(key, m);
       }
@@ -138,7 +144,7 @@
       floor.scale.set(bounds.radius * 40, bounds.radius * 40, 1);
       floor.position.set(bounds.center.x, -0.01, bounds.center.z);
       // The floor fades into the background: no horizon line.
-      scene.fog = new THREE.Fog(background, bounds.radius * 4, bounds.radius * 11);
+      if (!transparent) scene.fog = new THREE.Fog(background, bounds.radius * 4, bounds.radius * 11);
     }
 
     /**
