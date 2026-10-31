@@ -103,8 +103,8 @@ the optional solvers, which load from a CDN.
 You can also paste a model into the source panel, or drop a file on the scene.
 
 The player follows the builder's moves: the plank slider also stops on each
-scaffold plank and on each removal of scaffolds, drawn in grey. Leaning planks
-are drawn as they lean; the balance check skips them, so use the drop test,
+scaffold plank and on each removal of scaffolds, drawn in grey. Leaning and
+tilted planks are drawn as they are; the balance check skips them, so use the drop test,
 which replays scaffolds going up and coming away too. When the author gave
 views (`view=` on a step), the camera turns to them as the steps change, and
 the *Author's view* button turns it back. The model's author, license, date,

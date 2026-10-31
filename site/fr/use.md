@@ -111,8 +111,8 @@ fichier sur la scène.
 
 Le lecteur suit les gestes du constructeur : le curseur des planchettes
 s'arrête aussi sur chaque étai et sur chaque retrait d'étais, dessinés en
-gris. Les planchettes inclinées sont dessinées inclinées ; le calcul
-d'équilibre ne les traite pas, utilisez donc le test de chute, qui rejoue lui
+gris. Les planchettes inclinées et basculées sont dessinées comme elles
+sont ; le calcul d'équilibre ne les traite pas, utilisez donc le test de chute, qui rejoue lui
 aussi la pose et le retrait des étais. Quand l'auteur a donné des vues
 (`view=` sur une étape), la caméra s'y tourne quand l'étape change, et le
 bouton *Vue de l'auteur* l'y ramène. L'auteur du modèle, sa licence, sa

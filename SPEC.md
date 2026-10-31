@@ -1,13 +1,16 @@
-# PlankMD: Format Specification v0.2
+# PlankMD: Format Specification v0.3
 
 > Status: Draft, October 2026
 > License: MIT
 >
-> v0.2 adds [leaning planks](#leaning-planks-level-2),
-> [scaffolds](#scaffolds-level-2), [view hints](#view-hints-level-2) and the
-> [metadata of shared models](#metadata-of-shared-models). Every v0.1 file is
-> a valid v0.2 file with the same meaning (see
-> [Changes from v0.1](#changes-from-v0-1)).
+> v0.3 adds [tilted planks](#tilted-planks-level-2), which turn around a
+> horizontal axis (the fans of a true arch), and
+> [whole lines](#placement-order), placed all at once (the rings of a dome).
+> Every v0.2 file is a valid v0.3 file with the same meaning (see
+> [Changes from v0.2](#changes-from-v0-2)). v0.2 added
+> [leaning planks](#leaning-planks-level-2), [scaffolds](#scaffolds-level-2),
+> [view hints](#view-hints-level-2) and the
+> [metadata of shared models](#metadata-of-shared-models).
 
 ---
 
@@ -42,7 +45,7 @@ The key words MUST, SHOULD and MAY are to be read as in RFC 2119.
 |---|---|---|
 | 0 | One ` ```plank ` block, one plank per line | A construction in a single step |
 | 1 | YAML frontmatter; several blocks = several steps | Metadata, plank size, building steps |
-| 2 | Per-line attributes (`color`, `id`, `repeat`, `rot`, `pivot`, `lean`…), guides, scaffolds and view hints | Colors, names, compact repetitions, free angles, leaning planks, measuring gaps, temporary supports, camera directions |
+| 2 | Per-line attributes (`color`, `id`, `repeat`, `rot`, `pivot`, `lean`, `tilt`, `order`…), guides, scaffolds and view hints | Colors, names, compact repetitions, free angles, rings and spirals, leaning and tilted planks, measuring gaps, temporary supports, camera directions |
 
 Each level is a strict superset of the previous one.
 
@@ -104,7 +107,7 @@ flat-y 12 0 1
 
 ```yaml
 ---
-plankmd: "0.2"            # spec version (required at Level 1)
+plankmd: "0.3"            # spec version (required at Level 1)
 title: Small square tower # required at Level 1
 lang: en                  # BCP 47, optional
 plank: [15, 3, 1]         # L, W, T in units; default [15, 3, 1]
@@ -185,6 +188,10 @@ with no spaces around `=`:
 | `rot-step` | degrees | Extra rotation added at each repetition (spirals) |
 | `pivot` | `px,py` | Vertical axis for `rot` and `rot-step`, instead of the plank's centre. The plank turns around it, position included |
 | `lean` | `<dir>:<degrees>` | Tips the plank over: see [Leaning Planks](#leaning-planks-level-2) |
+| `tilt` | `<axis>:<degrees>` | Turns the plank around a horizontal axis: see [Tilted Planks](#tilted-planks-level-2) |
+| `tilt-step` | degrees | Extra tilt added at each repetition (fans, arches) |
+| `tilt-pivot` | `h,z` | Horizontal axis for `tilt` and `tilt-step`, instead of the plank's centre |
+| `order` | `round` or `whole` | `whole` places every repetition of the line in a row, before the next line: see [Placement Order](#placement-order). Default: `round` |
 | `until` | `id` | On a scaffold line only: the plank whose placement releases the scaffold. See [Scaffolds](#scaffolds-level-2) |
 
 Repetition `i` (from 0) sits at `position + i × offset`, then is rotated by
@@ -200,7 +207,41 @@ flat-x 0 -1.5 0 repeat=36 offset=0,0,1 rot-step=10 pivot=0,0    # spiral stairca
 ```
 ````
 
-`rot` only turns around a vertical axis. To tip a plank over, use `lean`.
+`rot` only turns around a vertical axis. To tip a plank over, use `lean`; to
+turn it around a horizontal axis, use `tilt`.
+
+### Rings and spirals
+
+`rot-step` with a `pivot` turns every repetition a little further around the
+same vertical axis. With no `offset` between repetitions, the planks go
+round the pivot at the same height: a **ring**. With an `offset` upwards,
+they climb as they turn: a **spiral**.
+
+````markdown
+```plank
+flat-x -7.5 13 0 repeat=6 offset=0,0,0 rot-step=60 pivot=0,0 order=whole
+flat-x -7.5 13 1 repeat=6 offset=0,0,0 rot=30 rot-step=60 pivot=0,0 order=whole
+```
+````
+
+Each line is a ring of six planks around `0,0`, one every 60°. The second
+ring is turned by half a side (`rot=30`), so that every plank bridges a joint
+of the ring below: this is how drums, turrets, domes and spheres are built.
+`order=whole` lays each ring completely before the next one (see
+[Placement Order](#placement-order)).
+
+A ring of `N` planks of length `L`, whose inner edges are `r` from the
+pivot, has no overlap at the corners when `2 r tan(180° / N) ≥ L`: with the
+default plank, `r ≥ 13` for six planks, `r ≥ 18.1` for eight, `r ≥ 23.1` for
+ten. A dome is a stack of rings, each a little smaller than the one below,
+that takes fewer planks when its radius gets too small for them.
+
+```plank
+flat-x -7.5 -1.5 0 repeat=24 offset=0,0,1 rot-step=15 pivot=0,0
+```
+
+A spiral: 24 planks, each one plank thickness higher than the one before and
+turned 15° further, a full turn around `0,0`.
 
 ---
 
@@ -248,6 +289,76 @@ Guides may lean too, to measure a slope.
 
 ---
 
+## Tilted Planks (Level 2)
+
+A true arch is a fan: planks on their edges, set like rays around the middle
+of the opening, each one turned a little further than the one before. Its
+planks turn around a **horizontal** axis, which `rot` cannot do, and around a
+common axis, which `lean` cannot do (a leaning plank pivots on its own
+edge). `tilt` turns a plank around a horizontal axis, and `tilt-step` and
+`tilt-pivot` lay a fan, as `rot-step` and `pivot` lay a ring.
+
+| Attribute | Value | Meaning |
+|---|---|---|
+| `tilt` | `<axis>:<degrees>` | `<axis>` is `x` or `y`: the top of the plank goes towards `+x` or towards `+y` by that angle. Any angle, negative included |
+| `tilt-step` | degrees | Added to the tilt at each repetition |
+| `tilt-pivot` | `h,z` | The axis passes through `x = h` (for `tilt=x:…`) or `y = h` (for `tilt=y:…`), at height `z`. It runs along `y` (or `x`). Default: through the centre of the plank's box |
+
+```plank
+edge-y -0.5 0 12 repeat=19 offset=0,0,0 tilt=x:-90 tilt-step=5 tilt-pivot=0,0.5
+```
+
+Half an arch: a plank on its edge, 11.5 u above the axis `x = 0, z = 0.5`,
+tipped by -90° (its top towards `-x`, so it lies on the table on the left),
+then 5° more upright at each repetition, up to the top. Every plank rests
+on the one below.
+
+- The position `x y z` is still the minimum corner of the box **before** the
+  tilt.
+- Repetition `i` is tilted by `tilt + i × tilt-step` around `tilt-pivot`.
+  The pivot does not move with `offset`: an `offset` along the axis slides
+  the fan along it, as for `pivot`.
+- `tilt` applies before `rot`: the tilted plank then turns as a whole around
+  the vertical axis through the centre of its box before the tilt, or around
+  `pivot`.
+- A plank cannot both `lean` and `tilt` (`E-tilt`). `tilt-step` and
+  `tilt-pivot` need a `tilt` (`E-tilt`): write `tilt=x:0` to start a fan from
+  upright.
+- Tilted planks are checked like leaning planks, within the same tolerance
+  (see [Validation](#validation)).
+
+**Spacing a fan.** Planks on their edges `r` from the axis touch at their
+inner edges when the step is `T / r` radians, `T` being the thickness of the
+plank: 5° for `r = 11.5` with the default plank. A smaller step makes them go
+through each other.
+
+**Building an arch.** Each half of an arch rests on itself as it rises, but
+the keystone at the top must go in last, once both halves are up. The usual
+way is to raise both halves together, then the keystone in a step of its own,
+on a [scaffold](#scaffolds-level-2) called a centring:
+
+````markdown
+## Step 1: the two halves
+
+```plank
+scaffold flat-y -10.5 0 0 repeat=7 offset=3,0,0 until=key
+edge-y -0.5 0 12 repeat=18 offset=0,0,0 tilt=x:-90 tilt-step=5 tilt-pivot=0,0.5
+edge-y -0.5 0 12 repeat=18 offset=0,0,0 tilt=x:90 tilt-step=-5 tilt-pivot=0,0.5
+```
+
+## Step 2: the keystone
+
+```plank
+edge-y -0.5 0 12 tilt=x:0 tilt-pivot=0,0.5 id=key
+```
+````
+
+The two lines of step 1 are interleaved by round: a plank on the left, a
+plank on the right, and so on up. In the same step, the keystone, a single
+plank, would be laid in round 0, before anything holds it.
+
+---
+
 ## Placement Order
 
 A builder places planks one at a time, and the file says in which order:
@@ -272,8 +383,23 @@ is placed A₀, B₀, A₁, B₁, A₂, B₂, A₃, B₃: layer after layer, eac
 resting on planks placed before it. To place every repetition of one line
 before the next line, put them in two steps.
 
-A [scaffold](#scaffolds-level-2) line is the exception: it is placed whole,
-all its repetitions in a row, in round 0, at its place among the lines.
+A line with **`order=whole`** is the exception: it is placed whole, all its
+repetitions in a row, in round 0, at its place among the lines. The rings of
+a dome are written this way: each ring is finished before the next one
+starts, in a single block. A [scaffold](#scaffolds-level-2) line is always
+placed whole. `order=round`, the default, says the line goes by rounds.
+
+````markdown
+```plank
+flat-x -7.5 24 0 repeat=10 offset=0,0,0 rot-step=36 pivot=0,0 order=whole
+flat-x -7.5 23 1 repeat=9 offset=0,0,0 rot=18 rot-step=40 pivot=0,0 order=whole
+flat-x -7.5 22 2 repeat=9 offset=0,0,0 rot=38 rot-step=40 pivot=0,0 order=whole
+```
+````
+
+is placed as ten planks of the first ring, then nine of the second, then
+nine of the third. Without `order=whole`, the first plank of each ring would
+come first, one above the other, then the second of each, and so on.
 
 **Moves.** What the builder does, in order, is a sequence of **moves**: place
 a plank, place a scaffold plank, or take scaffolds away. Without scaffolds,
@@ -489,6 +615,7 @@ number in the file.
 | `W-floating` | warning | A plank with `z > 0` rests on nothing when it is placed: no plank placed before it has its top face touching the new plank's bottom face over a positive area. Side contact does not count, and neither does a plank placed later, even in the same step. For a leaning plank, see below |
 | `W-inventory` | warning | More planks in place at once than `inventory`, scaffolds included |
 | `E-lean` | error | A `lean` value is not `<dir>:<degrees>` with a direction among `+x`, `-x`, `+y`, `-y` and an angle strictly between 0 and 90 |
+| `E-tilt` | error | A `tilt` value is not `<axis>:<degrees>` with an axis `x` or `y`; or `tilt-step` or `tilt-pivot` without a `tilt`; or a plank that both leans and tilts |
 | `W-unchecked-lean` | warning | The validator cannot check a leaning plank exactly. It MUST say so rather than report the plank as valid |
 | `W-scaffold-release` | warning | `until` names no plank, names a scaffold, or names a plank placed before the scaffold. The scaffold is removed at the end of its step |
 | `W-scaffold-floating` | warning | Once scaffolds are removed, a plank that rested on them rests on nothing |
@@ -518,12 +645,12 @@ in the ground plane. An exact check (separating axis test on the two
 footprints) is a few lines; validators SHOULD implement it rather than fall
 back to `W-unchecked-rotation`.
 
-**Leaning planks** are boxes turned in space. Overlaps are checked as boxes
+**Leaning and tilted planks** are boxes turned in space. Overlaps are checked as boxes
 (separating axis test on the fifteen axes of two boxes). A leaning plank
 touches its supports along an edge or at a corner, at an angle the author
 rounds, so when either plank leans, two planks overlap only if they share a
 volume deeper than a **tolerance of 0.2 u** (about 1.6 mm), and they touch
-when they are less than 0.2 u apart. A plank rests on something when it
+when they are less than 0.2 u apart. The same goes for a tilted plank. A plank rests on something when it
 touches the ground, or touches a plank placed before it that does not lie
 entirely above it. Touching is weaker than resting: whether a leaning plank
 stays is for a physics check.
@@ -542,8 +669,11 @@ line        = [ ( "guide" | "scaffold" ) ws ] orientation ws num ws num ws num {
             | [ ws? comment ] ;
 orientation = ( "flat" | "edge" | "up" ) "-" ( "x" | "y" ) ;
 attribute   = key "=" value ;
-key         = "color" | "id" | "repeat" | "offset" | "rot" | "rot-step" | "pivot" | "lean" | "until" ;
+key         = "color" | "id" | "repeat" | "offset" | "rot" | "rot-step" | "pivot" | "lean"
+            | "tilt" | "tilt-step" | "tilt-pivot" | "order" | "until" ;
 lean        = ( "+" | "-" ) ( "x" | "y" ) ":" num ;
+tilt        = ( "x" | "y" ) ":" num ;
+order       = "round" | "whole" ;
 num         = [ "-" ] digit { digit } [ "." digit { digit } ] ;
 comment     = "#" { any character } ;
 
@@ -565,8 +695,10 @@ keys without breaking older readers.
 - **Which way a scaffold comes out**: an `out=<direction>` attribute on a
   scaffold line, which the validator would check is free and the booklet
   would tell the builder.
-- **Fans of leaning planks**: a `lean-step`, each repetition tipped a little
-  more.
+- **Nested repetition**: a dome is one `order=whole` line per ring. A line
+  that repeats rings, with a radius that shrinks and a count that drops,
+  would make it one line, at the cost of a harder grammar and placement
+  order.
 - **Translations and holding a plank**: proposals in `docs/proposals/`
   (`translations.md`, `hold.md`). The reference tools already read
   translations.
@@ -575,6 +707,21 @@ keys without breaking older readers.
 - **Stability**: whether a shared, deterministic balance check belongs in the
   spec or stays a tool feature. The reference implementation has one
   (`src/physics.js`), reported under `I-` codes.
+
+---
+
+## Changes from v0.2
+
+v0.3 only adds: a v0.2 file is a valid v0.3 file and means the same.
+
+- **Tilted planks**: the `tilt`, `tilt-step` and `tilt-pivot` attributes,
+  `E-tilt`, and the tolerance of leaning planks for tilted ones. They answer
+  the open question of fans of leaning planks.
+- **Whole lines**: the `order` attribute; `order=whole` places a repeated
+  line all at once, as a scaffold line is.
+
+A file that uses one of these SHOULD say `plankmd: "0.3"`, so that a v0.2
+reader warns about the version before it builds a fan or a ring wrongly.
 
 ---
 
