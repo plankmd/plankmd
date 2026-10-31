@@ -357,6 +357,11 @@ The two lines of step 1 are interleaved by round: a plank on the left, a
 plank on the right, and so on up. In the same step, the keystone, a single
 plank, would be laid in round 0, before anything holds it.
 
+A valid arch is not a standing arch (see [Validation](#validation)): in a
+fan, two planks touch only along their inner edges, so every joint is a
+hinge with a few degrees of play, and the drop test of the reference tools
+sees such an arch fall once its centring is removed (`samples/fan-arch`).
+
 ---
 
 ## Placement Order

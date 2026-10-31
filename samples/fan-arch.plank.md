@@ -6,6 +6,7 @@ inventory: 110
 difficulty: 4
 author: PlankMD contributors
 license: CC0-1.0
+expect: falls
 date: 2026-10-31
 tags: [arch, voussoir, tilt, scaffold]
 minutes: 25
@@ -16,10 +17,11 @@ palette:
 
 # Fan arch
 
-A true arch: planks on their edges, set like the rays of a fan around the
-middle of the opening, each one turned five degrees further than the one
-before. 37 voussoirs on two small buttresses, and a stack of planks that
-holds the arch while it is built.
+A model that falls on purpose, to see why stone arches are made of wedges.
+Planks on their edges, set like the rays of a fan around the middle of the
+opening, each one turned five degrees further than the one before: 37
+voussoirs on two small buttresses, and a stack of planks that holds them
+while they go on. Once that stack comes out, the arch falls.
 
 ## Step 1: the buttresses
 
@@ -57,9 +59,17 @@ edge-y -0.5 0 12 repeat=18 offset=0,0,0 tilt=x:90 tilt-step=-5 tilt-pivot=0,0.5
 
 ## Step 3: the keystone
 
-Slide the last plank in, straight up, between the two halves: it locks the
-arch. Then slide the centring out, one plank at a time, along the length of
-the planks.
+Slide the last plank in, straight up, between the two halves. Then slide
+the centring out, one plank at a time, along the length of the planks, and
+watch the top of the arch sink and the whole fan come down.
+
+A stone voussoir is a wedge: it touches its neighbours over its whole face,
+and the arch cannot move. A plank is a rectangle: in a fan, two planks touch
+only along their inner edges, with a thin gap that opens outwards. Each
+joint is a hinge that can turn about five degrees before it closes, and 36
+small hinges add up: the keystone slips down between its neighbours, and
+the halves fold in after it. Leave the centring in place, or build the arch
+as a corbel, in flat layers that each reach a little further in.
 
 ```plank view=front,10
 edge-y -0.5 0 12 tilt=x:0 tilt-pivot=0,0.5 id=key color=key

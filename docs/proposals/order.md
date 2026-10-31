@@ -44,7 +44,7 @@ any line be placed that way.
 - Any row that must be laid completely before what goes on it: the planks of
   a floor laid side by side, then the walls on it, in the same step.
 - Layers of different widths in one block (a stepped roof, the spandrels of
-  an aqueduct): each layer whole, then the next.
+  a bridge): each layer whole, then the next.
 
 ## Alternatives considered
 

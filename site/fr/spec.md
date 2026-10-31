@@ -387,6 +387,12 @@ gauche, une planchette à droite, et ainsi de suite jusqu'en haut. Dans la
 même étape, la clé, une planchette seule, serait posée au tour 0, avant que
 rien ne la tienne.
 
+Une arche valide n'est pas une arche qui tient debout (voir
+[Validation](#validation)) : dans un éventail, deux planchettes ne se
+touchent que par leurs bords intérieurs, chaque joint est donc une charnière
+avec quelques degrés de jeu, et le test de chute des outils de référence
+voit une telle arche tomber une fois son cintre retiré (`samples/fan-arch`).
+
 ---
 
 ## Ordre de pose

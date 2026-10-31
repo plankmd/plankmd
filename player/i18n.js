@@ -162,7 +162,7 @@
       githubRepoLink: 'See on GitHub',
       galleryTitle: 'PlankMD Gallery',
       galleryHeading: 'PlankMD gallery',
-      galleryIntro: 'Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. The tent, made of leaning planks, and the fan arch and the aqueduct, made of tilted planks, are checked by the drop test only. Click one to open it in the player.',
+      galleryIntro: 'Every gallery model stands at every placement (balance check) and in a drop test, except the diving board, the leaning tower and the fan arch, which fall on purpose. The tent, made of leaning planks, is checked by the drop test only. Click one to open it in the player.',
       playerLink: 'Player',
     },
     fr: {
@@ -271,7 +271,7 @@
       githubRepoLink: 'Voir sur GitHub',
       galleryTitle: 'Galerie PlankMD',
       galleryHeading: 'Galerie PlankMD',
-      galleryIntro: "Chaque modèle de la galerie tient debout à chaque planchette posée (calcul d'équilibre) et au test de chute, sauf le plongeoir et la tour penchée, qui tombent exprès. La tente, en planchettes inclinées, et l'arche en éventail et l'aqueduc, en planchettes basculées, ne sont vérifiés que par le test de chute. Les modèles, leurs notices et leurs vidéos sont en français. Cliquez sur un modèle pour l'ouvrir dans le lecteur.",
+      galleryIntro: "Chaque modèle de la galerie tient debout à chaque planchette posée (calcul d'équilibre) et au test de chute, sauf le plongeoir, la tour penchée et l'arche en éventail, qui tombent exprès. La tente, en planchettes inclinées, n'est vérifiée que par le test de chute. Les modèles, leurs notices et leurs vidéos sont en français. Cliquez sur un modèle pour l'ouvrir dans le lecteur.",
       playerLink: 'Lecteur',
     },
   };

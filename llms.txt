@@ -15,5 +15,5 @@
 - [Bridge on a scaffold](https://plankmd.org/samples/scaffold-bridge.plank.md): a `scaffold` that holds two beams until their counterweights are on
 - [Tent](https://plankmd.org/samples/tent.plank.md): leaning planks with `lean`
 - [Ring dome](https://plankmd.org/samples/ring-dome.plank.md): rings of planks with `rot-step`, `pivot` and `order=whole`
-- [Fan arch](https://plankmd.org/samples/fan-arch.plank.md): a true arch with `tilt`, `tilt-step` and `tilt-pivot`, on a centring
+- [Fan arch](https://plankmd.org/samples/fan-arch.plank.md): a fan of planks with `tilt`, `tilt-step` and `tilt-pivot`, on a centring; it falls on purpose once the centring comes out
 - [Castle](https://plankmd.org/gallery/castle.plank.md): a larger model in many steps

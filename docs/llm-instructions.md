@@ -258,6 +258,13 @@ edge-y -0.5 0 12 repeat=19 offset=0,0,0 tilt=x:-90 tilt-step=5 tilt-pivot=0,0.5
   tilt-step=5` and `tilt=x:90 tilt-step=-5`, 18 planks each), so that they
   rise together, then the keystone (`tilt=x:0`) in a step of its own. Hold
   the arch on a scaffold centring released by the keystone (`until=<id>`).
+- A fan of planks does not stand on its own: two planks in a fan touch only
+  along their inner edges, every joint has a few degrees of play, and the
+  arch falls once its centring is removed. For an arch that must carry
+  something, build a corbel arch (flat layers that each reach a little
+  further in), or keep the centring as part of the model. Use fans for what
+  is held another way: a sun, a peacock's tail, a mane, the facing of a
+  wall.
 - Tilted planks are checked like leaning planks, within 0.2 u. The balance
   check skips them: check them with the drop test.
 

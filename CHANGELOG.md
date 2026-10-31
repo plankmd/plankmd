@@ -15,9 +15,9 @@
   - **Rings and spirals**: a new section of the spec on `rot-step` with a
     `pivot`, with the rule for a ring without overlaps.
 - Balance check: skips tilted planks too (`I-unchecked-lean`).
-- Samples: a ring dome, and a fan arch on a centring.
-- Gallery: the Pantheon under a ring dome, and a Roman aqueduct on three
-  true arches, both in English and French.
+- Samples: a ring dome, and a fan arch that falls on purpose once its
+  centring comes out: planks in a fan only touch along their inner edges.
+- Gallery: the Pantheon under a ring dome, in English and French.
 - LLM instructions: rings and domes, fans and true arches.
 
 - Format v0.2 (`SPEC.md`, and the French spec on the website). Every v0.1

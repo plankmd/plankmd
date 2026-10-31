@@ -63,6 +63,16 @@ The balance check does not model edge contacts; it skips models with tilted
 planks (`I-unchecked-lean`), as it skips leaning planks, and the drop test
 checks them.
 
+**Valid is not standing.** A stone voussoir is a wedge that touches its
+neighbours over a whole face. Planks are rectangles: in a fan, two of them
+touch only along their inner edges, with a gap that opens outwards, so every
+joint is a hinge with a few degrees of play. In the drop test, semicircular
+fans of 37 planks fall once their centring is removed, bare, between high
+abutments, under a filled spandrel and a deck, and with a friction of 0.8:
+the keystone slips down and the halves fold in. The sample `fan-arch` falls
+on purpose to show it. `tilt` describes such arches exactly; whether one
+stands is a question for the physics, as for any model.
+
 ## Alternatives considered
 
 - **`lean-step`**: each repetition leans a little more. The pivot edge of a
