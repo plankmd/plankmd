@@ -65,7 +65,7 @@ test('a pivot moves the plank around the axis', () => {
 });
 
 test('grammar errors are reported with their line', () => {
-  const r = validate('intro\n\n' + block(['flat-z 0 0 0', 'flat-x 0 0', 'flat-x 0 0 0 repeat=2', 'flat-x 0 0 0 tilt=3']));
+  const r = validate('intro\n\n' + block(['flat-z 0 0 0', 'flat-x 0 0', 'flat-x 0 0 0 repeat=2', 'flat-x 0 0 0 twist=3']));
   assert.deepEqual(r.diagnostics.map((d) => [d.code, d.line]),
     [['E-orientation', 4], ['E-parse', 5], ['E-parse', 6], ['W-unknown-attribute', 7]]);
 });
@@ -449,4 +449,88 @@ test('a scaffold line is checked like a plank, and until only applies to it', ()
 
 test('expand leaves scaffolds out of the planks', () => {
   assert.equal(expand(parse(corbel())).length, 20);
+});
+
+// ------------------------------------------------------- v0.3: tilted planks
+
+const near = (x, y, what) => assert.ok(Math.abs(x - y) < 1e-9, `${what || ''} ${x} != ${y}`);
+
+test('a tilt turns a plank around a horizontal axis through the centre of its box', () => {
+  // A standing plank tilted by 90 degrees towards +x lies down along x.
+  const [p] = validate(block(['up-y 0 0 0 tilt=x:90'])).planks;
+  near(p.center[0], 0.5); near(p.center[2], 7.5);
+  // Its thickness (1 u along x) is now vertical.
+  near(p.z0, 7); near(p.z1, 8);
+  assert.deepEqual(p.tilt, { axis: 'x', degrees: 90 });
+  // Its top went towards +x: the long axis (z before) now points along x.
+  near(Math.abs(p.axes[2][0]), 1);
+  // Towards +y, around the other axis.
+  const [q] = validate(block(['up-x 0 0 0 tilt=y:30'])).planks;
+  near(q.axes[2][1], Math.sin(Math.PI / 6), 'top towards +y');
+  near(q.axes[2][2], Math.cos(Math.PI / 6));
+});
+
+test('tilt-pivot and tilt-step lay a fan around one axis', () => {
+  // Seven planks on end around (0, 0.5): a quarter of a fan every 15 degrees.
+  const r = validate(block(['edge-y -0.5 0 10 repeat=7 offset=0,0,0 tilt=x:-45 tilt-step=15 tilt-pivot=0,0.5 order=whole']));
+  const radius = (p) => Math.hypot(p.center[0], p.center[2] - 0.5);
+  for (const p of r.planks) near(radius(p), 11, 'distance to the axis');
+  assert.deepEqual(r.planks.map((p) => p.tilt.degrees), [-45, -30, -15, 0, 15, 30, 45]);
+  near(r.planks[3].center[0], 0); near(r.planks[3].z0, 10);
+  // The pivot does not move with the offset: along the axis, the fan just slides.
+  const [a, b] = validate(block(['edge-y -0.5 0 10 repeat=2 offset=0,15,0 tilt=x:30 tilt-pivot=0,0.5'])).planks;
+  near(a.center[0], b.center[0]); near(a.center[2], b.center[2]); near(b.center[1] - a.center[1], 15);
+});
+
+test('tilt, then rot: the tilted plank turns as a whole', () => {
+  const [a] = validate(block(['flat-x 0 0 0 tilt=x:20'])).planks;
+  const [b] = validate(block(['flat-x 0 0 0 tilt=x:20 rot=90'])).planks;
+  near(a.z1, b.z1);
+  near(b.center[0], a.center[0]); near(b.center[1], a.center[1]);
+  near(b.axes[0][1], a.axes[0][0], 'the long axis turned a quarter');
+});
+
+test('tilted planks are checked as boxes, within the tolerance', () => {
+  // Both halves of an arch rise together, then the keystone, in a step of its
+  // own (in the same step, round 0 would lay it first): every voussoir rests
+  // on the one below.
+  const arch = block([
+    'edge-y -0.5 0 11.5 repeat=18 offset=0,0,0 tilt=x:-90 tilt-step=5 tilt-pivot=0,0.5',
+    'edge-y -0.5 0 11.5 repeat=18 offset=0,0,0 tilt=x:90 tilt-step=-5 tilt-pivot=0,0.5',
+  ]) + '\n' + block(['edge-y -0.5 0 11.5 tilt=x:0 tilt-pivot=0,0.5']);
+  const r = validate(arch);
+  assert.deepEqual(codes(r), []);
+  assert.equal(r.planks.length, 37);
+  // A step too small makes them go through each other.
+  assert.deepEqual(codes(validate(block(['edge-y -0.5 0 11.5 repeat=3 offset=0,0,0 tilt=x:-90 tilt-step=2 tilt-pivot=0,0.5 order=whole']))).slice(0, 1), ['E-overlap']);
+});
+
+test('tilt values are checked', () => {
+  for (const v of ['z:10', 'x', 'x:', '+x:10', 'x:ten']) {
+    assert.deepEqual(codes(validate(block([`flat-x 0 0 0 tilt=${v}`]))), ['E-tilt'], v);
+  }
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 10 tilt=x:-120']))).filter((c) => c !== 'W-floating'), []);
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0 tilt-step=5']))), ['E-tilt']);
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0 tilt-pivot=0,0']))), ['E-tilt']);
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0 tilt=x:10 lean=+x:10']))), ['E-tilt']);
+});
+
+// ------------------------------------------------------ v0.3: whole lines
+
+test('order=whole places every repetition of a line before the next line', () => {
+  const rings = block([
+    'flat-x -7.5 13 0 repeat=6 offset=0,0,0 rot-step=60 pivot=0,0 order=whole',
+    'flat-x -7.5 13 1 repeat=6 offset=0,0,0 rot=30 rot-step=60 pivot=0,0 order=whole',
+  ]);
+  const r = validate(rings);
+  assert.deepEqual(codes(r), []);
+  assert.deepEqual(r.planks.map((p) => p.z0), [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
+  // Without it, the rings are interleaved by round and the second ring is laid before the first is done.
+  const interleaved = validate(rings.replace(/ order=whole/g, ''));
+  assert.deepEqual(interleaved.planks.slice(0, 4).map((p) => p.z0), [0, 1, 0, 1]);
+  // Other lines still go by round around it.
+  const mixed = validate(block(['flat-x 0 0 0 repeat=2 offset=0,0,1', 'flat-x 0 6 0 repeat=2 offset=0,0,1 order=whole', 'flat-x 0 12 0 repeat=2 offset=0,0,1']));
+  assert.deepEqual(mixed.planks.map((p) => p.position[1] + ':' + p.z0), ['0:0', '6:0', '6:1', '12:0', '0:1', '12:1']);
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0 order=later']))), ['E-parse']);
+  assert.deepEqual(codes(validate(block(['flat-x 0 0 0 order=round']))), []);
 });

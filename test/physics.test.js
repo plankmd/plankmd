@@ -64,8 +64,8 @@ test('every sample stands at every placement, with a tilt margin, unless it fall
   for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.plank.md'))) {
     const text = fs.readFileSync(path.join(dir, file), 'utf8');
     const r = await analyse(text);
-    // Leaning planks are for the drop test (test/drop.test.js): the balance check says so.
-    if (/\blean=/.test(text)) { assert.deepEqual(r.diagnostics.map((d) => d.code), ['I-unchecked-lean'], file); continue; }
+    // Leaning and tilted planks are for the drop test (test/drop.test.js): the balance check says so.
+    if (/\b(lean|tilt)=/.test(text)) { assert.deepEqual(r.diagnostics.map((d) => d.code), ['I-unchecked-lean'], file); continue; }
     if (/^expect:\s*falls\s*$/m.test(text)) { assert.equal(r.stable, false, file); continue; }
     assert.equal(r.stable, true, file);
     assert.ok(r.steps.every((s) => s.tilt >= physics.FRAGILE_TILT), `${file}: ${JSON.stringify(r.steps)}`);

@@ -122,7 +122,7 @@ async function main(argv) {
     if (r.error) { console.error(`${r.file}: ${r.error}`); return 2; }
     const geometry = (p) => ({
       orientation: p.orientation, position: p.position, size: p.size, rotation: p.rotation,
-      ...(p.lean ? { lean: p.lean } : {}), center: p.center, axes: p.axes,
+      ...(p.lean ? { lean: p.lean } : {}), ...(p.tilt ? { tilt: p.tilt } : {}), center: p.center, axes: p.axes,
     });
     const planks = r.planks.map((p) => ({ n: p.n, step: p.step, line: p.line, id: p.id, ...geometry(p), color: p.color, move: p.move }));
     const guides = r.guides.map((g) => ({ step: g.step, line: g.line, ...geometry(g) }));
@@ -132,7 +132,7 @@ async function main(argv) {
     if (flags.has('--json')) console.log(JSON.stringify({ meta: r.meta, planks, guides, scaffolds, moves }, null, 2));
     else {
       const row = (label, p) => `${label}  step ${p.step}  ${p.orientation.padEnd(6)}  ` +
-        `${p.position.join(' ')}${p.rotation ? `  rot ${p.rotation}` : ''}${p.lean ? `  lean ${p.lean.dir}:${p.lean.degrees}` : ''}${p.id ? `  #${p.id}` : ''}`;
+        `${p.position.join(' ')}${p.rotation ? `  rot ${p.rotation}` : ''}${p.lean ? `  lean ${p.lean.dir}:${p.lean.degrees}` : ''}${p.tilt ? `  tilt ${p.tilt.axis}:${+p.tilt.degrees.toFixed(6)}` : ''}${p.id ? `  #${p.id}` : ''}`;
       // Guides are listed at the start of their step, where the builder lays them.
       for (const step of r.steps) {
         guides.filter((g) => g.step === step.number).forEach((g) => console.log(row('   ~', g)));

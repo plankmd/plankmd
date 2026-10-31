@@ -29,8 +29,8 @@
  * Scaffolds (docs/proposals/scaffold.md) are bodies like planks while they
  * are in place, and every removal is a check point. Leaning planks are not
  * modelled: their contacts are edges and corners at an angle, not polygons
- * between level faces. A model with one is not checked (`I-unchecked-lean`);
- * the drop test handles it.
+ * between level faces. The same goes for tilted planks. A model with one is
+ * not checked (`I-unchecked-lean`); the drop test handles it.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -497,7 +497,7 @@
   const movesOf = (result) => result.moves || result.planks.map((p, i) => ({ index: i + 1, kind: 'plank', step: p.step, plank: p }));
   const BLOCKING = ['W-floating', 'W-scaffold-floating'];
   const blockingOf = (result) => result.diagnostics.filter((d) => d.severity === 'error' || BLOCKING.includes(d.code));
-  const leaningOf = (result) => result.planks.concat(result.scaffolds || []).find((p) => p.lean);
+  const leaningOf = (result) => result.planks.concat(result.scaffolds || []).find((p) => p.lean || p.tilt);
   // Applies a move to a model (and to the list of bodies present, if given).
   function apply(model, m, present) {
     if (m.kind === 'remove') {
@@ -567,11 +567,11 @@
     }
     const lean = leaningOf(result);
     if (lean) {
-      out.skipped = 'the model has leaning planks, which it cannot model yet: use the drop test';
+      out.skipped = 'the model has leaning or tilted planks, which it cannot model yet: use the drop test';
       out.diagnostics.push({
         code: 'I-unchecked-lean', severity: 'info', step: lean.step, line: lean.line,
         ...(lean.scaffold ? { scaffold: lean.s } : { plank: lean.n }),
-        message: `The balance check cannot model leaning planks yet (${lean.scaffold ? `scaffold ${lean.s}` : `plank ${lean.n}`} leans): use the drop test to see whether the construction stands.`,
+        message: `The balance check cannot model leaning or tilted planks yet (${lean.scaffold ? `scaffold ${lean.s}` : `plank ${lean.n}`} ${lean.lean ? 'leans' : 'is tilted'}): use the drop test to see whether the construction stands.`,
       });
       out.complete = true;
       return out;

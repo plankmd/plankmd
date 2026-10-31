@@ -260,7 +260,7 @@ function cached(key, make) {
   return shared.get(key);
 }
 const EDGE_MATERIAL = new THREE.LineBasicMaterial({ color: 0x5a4630 });
-// A plank's orientation in the scene, leaning planks included (see src/drop.js).
+// A plank's orientation in the scene, leaning and tilted planks included (see src/drop.js).
 const sceneQuat = (p) => { const q = PlankMDDrop.sceneQuaternion(p); return new THREE.Quaternion(q.x, q.y, q.z, q.w); };
 
 // How planks look: their own colours or all natural wood, and a pine grain
@@ -307,7 +307,7 @@ function meshFor(p, current, problem) {
 // Where two planks share a volume: drawn as a solid striped block. Exact for
 // planks turned by a multiple of 90°, which is almost every model.
 function overlapVolume(p, q) {
-  if (p.lean || q.lean || p.rotation % 90 || q.rotation % 90) return null;
+  if (p.lean || q.lean || p.tilt || q.tilt || p.rotation % 90 || q.rotation % 90) return null;
   const box = (r) => {
     const xs = r.footprint.map((c) => c[0]), ys = r.footprint.map((c) => c[1]);
     return [[Math.min(...xs), Math.max(...xs)], [Math.min(...ys), Math.max(...ys)], [r.z0, r.z1]];

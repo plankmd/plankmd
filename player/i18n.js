@@ -162,7 +162,7 @@
       githubRepoLink: 'See on GitHub',
       galleryTitle: 'PlankMD Gallery',
       galleryHeading: 'PlankMD gallery',
-      galleryIntro: 'Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. The tent, made of leaning planks, is checked by the drop test only. Click one to open it in the player.',
+      galleryIntro: 'Every gallery model stands at every placement (balance check) and in a drop test, except the diving board and the leaning tower, which fall on purpose. The tent, made of leaning planks, and the fan arch and the aqueduct, made of tilted planks, are checked by the drop test only. Click one to open it in the player.',
       playerLink: 'Player',
     },
     fr: {
@@ -271,7 +271,7 @@
       githubRepoLink: 'Voir sur GitHub',
       galleryTitle: 'Galerie PlankMD',
       galleryHeading: 'Galerie PlankMD',
-      galleryIntro: "Chaque modèle de la galerie tient debout à chaque planchette posée (calcul d'équilibre) et au test de chute, sauf le plongeoir et la tour penchée, qui tombent exprès. La tente, en planchettes inclinées, n'est vérifiée que par le test de chute. Les modèles, leurs notices et leurs vidéos sont en français. Cliquez sur un modèle pour l'ouvrir dans le lecteur.",
+      galleryIntro: "Chaque modèle de la galerie tient debout à chaque planchette posée (calcul d'équilibre) et au test de chute, sauf le plongeoir et la tour penchée, qui tombent exprès. La tente, en planchettes inclinées, et l'arche en éventail et l'aqueduc, en planchettes basculées, ne sont vérifiés que par le test de chute. Les modèles, leurs notices et leurs vidéos sont en français. Cliquez sur un modèle pour l'ouvrir dans le lecteur.",
       playerLink: 'Lecteur',
     },
   };
@@ -281,7 +281,7 @@
     'the model has errors or floating planks: fix them first': 'le modèle a des erreurs ou des planchettes qui ne reposent sur rien : corrigez-les d\'abord',
     'the balance check could not start': "la vérification n'a pas pu démarrer",
     'this browser cannot run it in the background': 'ce navigateur ne peut pas la lancer en arrière-plan',
-    'the model has leaning planks, which it cannot model yet: use the drop test': "le modèle a des planchettes inclinées, qu'elle ne sait pas encore traiter : faites le test de chute",
+    'the model has leaning or tilted planks, which it cannot model yet: use the drop test': "le modèle a des planchettes inclinées ou basculées, qu'elle ne sait pas encore traiter : faites le test de chute",
   };
 
   // French explanations of the diagnostics, by code. Each entry lists the
@@ -421,6 +421,12 @@
       [/^Invalid lean "(.*)": /, (m) => `Inclinaison invalide ${q(m[1])} : attendu <direction>:<degrés>, la direction parmi +x, -x, +y, -y et l'angle entre 0 et 90, par exemple -x:20`],
       () => "Inclinaison invalide : attendu <direction>:<degrés>, par exemple -x:20",
     ],
+    'E-tilt': [
+      [/^Invalid tilt "(.*)": /, (m) => `Bascule invalide ${q(m[1])} : attendu <axe>:<degrés>, l'axe x ou y, par exemple x:30 (le haut part vers +x) ou y:-45`],
+      [/^"(tilt-step|tilt-pivot)" needs a "tilt", e\.g\. tilt=x:0$/, (m) => `${q(m[1])} demande un ${q('tilt')}, par exemple tilt=x:0`],
+      [/^A plank cannot both lean and tilt: use one of them$/, () => 'Une planchette ne peut pas à la fois pencher et basculer : choisissez l\'un des deux'],
+      () => 'Bascule invalide : attendu <axe>:<degrés>, par exemple x:30',
+    ],
     'W-view': [
       [/^Invalid view "(.*)": /, (m) => `Vue invalide ${q(m[1])} : attendu ${VIEW_HELP}, par exemple back-left,20`],
       [/^Expected key=value after "plank", got "(.*)"$/, (m) => `Attendu clé=valeur après ${q('plank')}, trouvé ${q(m[1])}`],
@@ -449,7 +455,7 @@
     ],
     'I-unchecked-lean': [
       // Built from the fields.
-      (d) => `La vérification de l'équilibre ne sait pas encore traiter les planchettes inclinées (${d.scaffold ? `l'étai ${d.scaffold} est incliné` : `la planchette ${d.plank} est inclinée`}) : faites le test de chute pour voir si la construction tient.`,
+      (d) => `La vérification de l'équilibre ne sait pas encore traiter les planchettes inclinées ou basculées (${d.scaffold ? `l'étai ${d.scaffold} est incliné` : `la planchette ${d.plank} est inclinée`}) : faites le test de chute pour voir si la construction tient.`,
     ],
     'I-unstable': [
       // Built from the fields: the planks that give way are all in `failing`,

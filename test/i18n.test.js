@@ -120,7 +120,20 @@ test('the French explanations recognise the v0.2 messages: metadata, views, lean
   assert.equal(fr({ code: 'W-scaffold-floating', message: 'plank 3 ("flat-x 0 0 1") rests on nothing once scaffolds 1 to 4 are removed', plank: 3 }),
     'La planchette 3 (« flat-x 0 0 1 ») ne repose plus sur rien quand les étais 1 à 4 sont retirés');
   assert.equal(fr({ code: 'I-unchecked-lean', plank: 2, message: '' }),
-    "La vérification de l'équilibre ne sait pas encore traiter les planchettes inclinées (la planchette 2 est inclinée) : faites le test de chute pour voir si la construction tient.");
+    "La vérification de l'équilibre ne sait pas encore traiter les planchettes inclinées ou basculées (la planchette 2 est inclinée) : faites le test de chute pour voir si la construction tient.");
+});
+
+test('the French explanations recognise the v0.3 messages: tilted planks', () => {
+  const doc = block(['flat-x 0 0 0 tilt=z:10', 'flat-x 0 0 0 tilt=x:ten', 'flat-x 0 0 0 tilt-step=5',
+    'flat-x 0 0 0 tilt-pivot=0,0', 'flat-x 0 0 0 tilt=x:10 lean=+x:10', 'flat-x 0 0 0 order=later']);
+  const seen = [];
+  for (const d of validate(doc).diagnostics) {
+    const { text, exact } = I18N.explain(d, 'fr');
+    assert.ok(exact, `${d.code}: ${d.message}`);
+    assert.doesNotMatch(text.replace(/« [^»]* »/g, ''), /\b(plank|needs|expected|cannot)\b/, `${d.code}: ${text}`);
+    seen.push(d.code);
+  }
+  assert.deepEqual(seen, ['E-tilt', 'E-tilt', 'E-tilt', 'E-tilt', 'E-tilt', 'E-parse']);
 });
 
 test('the balance diagnostics of scaffolds are explained from their fields', () => {
