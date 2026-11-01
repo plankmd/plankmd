@@ -2,7 +2,7 @@
 plankmd: "0.3"
 title: Pantheon
 lang: en
-inventory: 267
+inventory: 347
 difficulty: 4
 author: PlankMD contributors
 license: CC0-1.0
@@ -17,9 +17,9 @@ palette:
 
 # Pantheon
 
-A round temple under a dome open to the sky, behind a portico of sixteen
+A round temple under a dome open to the sky, behind a portico of eight
 columns. The drum and the dome are rings of planks laid flat around the
-centre, each one turned half a side from the one below. 267 planks.
+centre, each one turned half a side from the one below. 347 planks.
 
 ## Step 1: the drum
 
@@ -73,54 +73,48 @@ flat-x -7.5 8 23 repeat=4 offset=0,0,0 rot=231 rot-step=90 pivot=0,0 order=whole
 
 ## Step 4: the columns
 
-Stand sixteen planks on their ends, in two rows of eight in front of the
-drum: the front row eleven plank thicknesses ahead of the back row.
+Build eight columns in a row in front of the drum: each one a stack of
+twelve planks lying along the depth of the portico, with two plank widths
+between two columns.
 
 ```plank view=front,15
-up-x -22.5 -40 0 color=marble
-up-x -16.5 -40 0 color=marble
-up-x -10.5 -40 0 color=marble
-up-x -4.5 -40 0 color=marble
-up-x 1.5 -40 0 color=marble
-up-x 7.5 -40 0 color=marble
-up-x 13.5 -40 0 color=marble
-up-x 19.5 -40 0 color=marble
-up-x -22.5 -29 0 color=marble
-up-x -16.5 -29 0 color=marble
-up-x -10.5 -29 0 color=marble
-up-x -4.5 -29 0 color=marble
-up-x 1.5 -29 0 color=marble
-up-x 7.5 -29 0 color=marble
-up-x 13.5 -29 0 color=marble
-up-x 19.5 -29 0 color=marble
+flat-y -22.5 -44 0 repeat=12 offset=0,0,1 color=marble
+flat-y -16.5 -44 0 repeat=12 offset=0,0,1 color=marble
+flat-y -10.5 -44 0 repeat=12 offset=0,0,1 color=marble
+flat-y -4.5 -44 0 repeat=12 offset=0,0,1 color=marble
+flat-y 1.5 -44 0 repeat=12 offset=0,0,1 color=marble
+flat-y 7.5 -44 0 repeat=12 offset=0,0,1 color=marble
+flat-y 13.5 -44 0 repeat=12 offset=0,0,1 color=marble
+flat-y 19.5 -44 0 repeat=12 offset=0,0,1 color=marble
 ```
 
 ## Step 5: the beams
 
-Lay three planks end to end across the tops of each row.
+Lay three planks end to end across the fronts of the columns, and three
+more across their backs.
 
 ```plank view=front,15
-flat-x -22.5 -41 15 color=marble
-flat-x -7.5 -41 15 color=marble
-flat-x 7.5 -41 15 color=marble
-flat-x -22.5 -30 15 color=marble
-flat-x -7.5 -30 15 color=marble
-flat-x 7.5 -30 15 color=marble
+flat-x -22.5 -44 12 color=marble
+flat-x -7.5 -44 12 color=marble
+flat-x 7.5 -44 12 color=marble
+flat-x -22.5 -32 12 color=marble
+flat-x -7.5 -32 12 color=marble
+flat-x 7.5 -32 12 color=marble
 ```
 
 ## Step 6: the roof of the portico
 
-Cover both rows with planks laid side by side, from the front row to the
-back row. Then build the pediment: each layer one plank narrower on each
+Cover the beams with planks laid side by side, from the front to the back.
+Then build the pediment: each layer one plank narrower on each
 side, up to a single plank at the ridge.
 
 ```plank view=front,20
-flat-y -22.5 -41 16 repeat=15 offset=3,0,0 order=whole color=stone
-flat-y -19.5 -41 17 repeat=13 offset=3,0,0 order=whole color=stone
-flat-y -16.5 -41 18 repeat=11 offset=3,0,0 order=whole color=stone
-flat-y -13.5 -41 19 repeat=9 offset=3,0,0 order=whole color=stone
-flat-y -10.5 -41 20 repeat=7 offset=3,0,0 order=whole color=stone
-flat-y -7.5 -41 21 repeat=5 offset=3,0,0 order=whole color=stone
-flat-y -4.5 -41 22 repeat=3 offset=3,0,0 order=whole color=stone
-flat-y -1.5 -41 23 repeat=1 offset=3,0,0 order=whole color=stone
+flat-y -22.5 -44 13 repeat=15 offset=3,0,0 order=whole color=stone
+flat-y -19.5 -44 14 repeat=13 offset=3,0,0 order=whole color=stone
+flat-y -16.5 -44 15 repeat=11 offset=3,0,0 order=whole color=stone
+flat-y -13.5 -44 16 repeat=9 offset=3,0,0 order=whole color=stone
+flat-y -10.5 -44 17 repeat=7 offset=3,0,0 order=whole color=stone
+flat-y -7.5 -44 18 repeat=5 offset=3,0,0 order=whole color=stone
+flat-y -4.5 -44 19 repeat=3 offset=3,0,0 order=whole color=stone
+flat-y -1.5 -44 20 repeat=1 offset=3,0,0 order=whole color=stone
 ```

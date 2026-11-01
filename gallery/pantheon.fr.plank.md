@@ -2,7 +2,7 @@
 plankmd: "0.3"
 translation-of: pantheon.plank.md
 lang: fr
-source-hash: ef354f0aa0994ff1bc1472ea409bc9bcb99b6938a7c687dc673bc8a2585a2053
+source-hash: 0d48b6763b715939bddc90e4ef6886ef3a6bd1bbc4a251d769ecf9f6fe0d0d94
 title: Panthéon
 license: CC0-1.0
 ---
@@ -10,9 +10,9 @@ license: CC0-1.0
 # Panthéon
 
 Un temple rond sous une coupole ouverte sur le ciel, derrière un portique de
-seize colonnes. Le tambour et la coupole sont des anneaux de planchettes
+huit colonnes. Le tambour et la coupole sont des anneaux de planchettes
 posées à plat autour du centre, chacun tourné d'un demi-côté par rapport à
-celui du dessous. 267 planchettes.
+celui du dessous. 347 planchettes.
 
 ## Étape 1 : le tambour
 
@@ -44,24 +44,25 @@ grand ouvert : l'oculus, l'œil de la coupole, laisse entrer la lumière.
 
 ## Étape 4 : les colonnes
 
-Dresse seize planchettes debout sur leurs extrémités, en deux rangées de huit
-devant le tambour : la rangée de devant à onze épaisseurs de planchette de
-celle du fond.
+Monte huit colonnes en rang devant le tambour : chacune une pile de douze
+planchettes couchées dans la profondeur du portique, avec deux largeurs de
+planchette entre deux colonnes.
 
 ```plank
 ```
 
 ## Étape 5 : les poutres
 
-Pose trois planchettes bout à bout sur le haut de chaque rangée.
+Pose trois planchettes bout à bout en travers du devant des colonnes, et
+trois autres en travers de leur arrière.
 
 ```plank
 ```
 
 ## Étape 6 : le toit du portique
 
-Couvre les deux rangées de planchettes posées côte à côte, de la rangée de
-devant à celle du fond. Puis monte le fronton : chaque couche plus étroite
+Couvre les poutres de planchettes posées côte à côte, de l'avant à
+l'arrière. Puis monte le fronton : chaque couche plus étroite
 d'une planchette de chaque côté, jusqu'à une seule planchette au faîte.
 
 ```plank
