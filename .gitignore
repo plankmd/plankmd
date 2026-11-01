@@ -7,6 +7,7 @@ node_modules/
 
 # Python cross-check (see python/.gitignore)
 python/.venv/
+python/mujoco/.venv/
 __pycache__/
 
 # Local tool settings
