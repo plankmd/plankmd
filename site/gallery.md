@@ -5,11 +5,11 @@ description: Larger PlankMD models, each one checked for balance at every placem
 
 # Gallery
 
-Eleven larger models, released under CC0: a castle, a lighthouse, a pagoda,
+Twelve larger models, released under CC0: a castle, a lighthouse, a pagoda,
 a sailing ship, a windmill, an amphitheatre, an Eiffel-style tower, a step
-pyramid, a Greek temple, a triumphal arch, and Notre-Dame de Paris, the
-largest, with 1392 planks in 29 steps. Each one stands at every placement in the
-balance check and in a drop test. Open one in the player to replay it step by
+pyramid, a Greek temple, a triumphal arch, the Pantheon under its ring dome,
+and Notre-Dame de Paris, the largest, with 1392 planks in 29 steps. Each one
+stands at every placement in the balance check and in a drop test. Open one in the player to replay it step by
 step, plank by plank. Every model also reads in French, in the player, the booklet
 and the video: its French text is in a file next to it
 (`castle.fr.plank.md` for `castle.plank.md`).

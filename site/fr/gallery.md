@@ -5,11 +5,11 @@ description: Des modèles PlankMD plus grands, chacun vérifié à l'équilibre 
 
 # Galerie
 
-Onze modèles plus grands, publiés sous CC0 : un château, un phare, une
+Douze modèles plus grands, publiés sous CC0 : un château, un phare, une
 pagode, un voilier, un moulin, un amphithéâtre, une tour inspirée de la tour
-Eiffel, une pyramide à degrés, un temple grec, un arc de triomphe, et
-Notre-Dame de Paris, la plus grande, avec 1392
-planchettes en 29 étapes. Chacun tient debout à chaque
+Eiffel, une pyramide à degrés, un temple grec, un arc de triomphe, le
+Panthéon sous sa coupole en anneaux, et Notre-Dame de Paris, la plus grande,
+avec 1392 planchettes en 29 étapes. Chacun tient debout à chaque
 planchette posée, selon le calcul d'équilibre et le test de chute. Ouvrez-en
 un dans le lecteur pour le rejouer étape par étape, planchette par planchette.
 Le lecteur, les modèles, leurs notices et leurs vidéos sont en français.

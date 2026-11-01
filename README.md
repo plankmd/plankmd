@@ -1,6 +1,6 @@
 # PlankMD
 
-> **Status:** Draft (v0.2), not yet stable.
+> **Status:** Draft (v0.3), not yet stable.
 >
 > **Website:** [plankmd.org](https://plankmd.org), with the spec, the
 > [player](https://plankmd.org/player/) and the [gallery](https://plankmd.org/gallery).
@@ -52,18 +52,22 @@ flat-x 0 0 0
 flat-x 0 12 0
 ```
 
-Planks can lean (`lean=-x:20`, a ramp), and a `scaffold` line is a temporary
-support that holds up what cannot stand yet, removed at the end of its step.
+Planks can lean (`lean=-x:20`, a ramp) or tilt around a common axis
+(`tilt=x:-90 tilt-step=5 tilt-pivot=0,0.5`, the fan of a true arch); a ring of
+planks around a centre is one line (`rot-step=60 pivot=0,0 order=whole`); and
+a `scaffold` line is a temporary support that holds up what cannot stand yet,
+removed at the end of its step.
 A step can say where to look at it from (` ```plank view=back-left,20 `), and
 the frontmatter of a shared model says who made it, where it lives and what
 it looks like built (`author`, `url`, `image`, `tags`…).
 
 ## Gallery
 
-[`gallery/`](./gallery/) holds eleven larger models (CC0): a castle, a lighthouse,
-a pagoda, a sailing ship, a windmill, an amphitheatre, four landmarks
-(an Eiffel-style tower, a step pyramid, a Greek temple, a triumphal arch),
-and Notre-Dame de Paris, 1392 planks in 29 steps.
+[`gallery/`](./gallery/) holds twelve larger models (CC0): a castle, a lighthouse,
+a pagoda, a sailing ship, a windmill, an amphitheatre, five landmarks
+(an Eiffel-style tower, a step pyramid, a Greek temple, a triumphal arch,
+the Pantheon under its ring dome), and Notre-Dame de Paris, 1392 planks in
+29 steps.
 Each one stands at every placement in the balance check and in the drop
 test (`npm run check:gallery`). Open `player/gallery.html` to browse them.
 
@@ -79,10 +83,10 @@ test (`npm run check:gallery`). Open `player/gallery.html` to browse them.
 | [`bin/plankmd.js`](./bin/plankmd.js) | Command-line validator |
 | [`src/physics.js`](./src/physics.js) | Balance check: does it stand at every placement, and how much tilt does it withstand? Optional, needs [HiGHS](https://highs.dev) |
 | [`src/drop.js`](./src/drop.js) | Drop test: a physics engine ([Rapier](https://rapier.rs)) lets gravity act on the model |
-| [`gallery/`](./gallery/) | Eleven larger models, checked for balance |
+| [`gallery/`](./gallery/) | Twelve larger models, checked for balance |
 | [`site/`](./site/) | Source of [plankmd.org](https://plankmd.org) (VitePress) |
 | [`player/`](./player/) | A 3D player: steps, plank-by-plank replay, live editing, diagnostics, balance check and drop test; a printable booklet (`booklet.html`) and a building video (`video.html`) of any model |
-| [`samples/`](./samples/) | Example models (CC0): square tower, twisted tower, corbel bridge, and two models that fall on purpose: a diving board (at step 3) and a leaning tower (when its flag goes on top) |
+| [`samples/`](./samples/) | Example models (CC0): square tower, twisted tower, corbel bridge, a ring dome, and three models that fall on purpose: a diving board (at step 3), a leaning tower (when its flag goes on top) and a fan arch (when its centring comes out) |
 | [`test/cases/`](./test/cases/) | Small models with a known verdict (stands or falls), shared by every balance checker |
 
 ## Quick start

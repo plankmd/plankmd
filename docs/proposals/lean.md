@@ -124,6 +124,8 @@ Rules:
 
 - `lean-step`, for fans: each repetition tipped a little more. Natural, but
   the pivot edge moves with the lean, so the fan geometry needs a rule.
+  Answered in v0.3 by `tilt`, a rotation around a common horizontal axis
+  (see `tilt.md`).
 - Whether to allow leaning towards a direction along the plank's length for
   `edge` planks (`edge-x` tipped towards `+x` stands on one corner), or to
   reject it as unbuildable.

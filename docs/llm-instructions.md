@@ -17,7 +17,7 @@ node bin/plankmd.js validate model.plank.md --physics
 
 `--physics` also checks that the construction stands after every plank, and
 reports how much tilt it withstands: aim for at least 5°. For a model with
-leaning planks, which the balance check does not model, run the drop test
+leaning or tilted planks, which the balance check does not model, run the drop test
 instead:
 
 ```bash
@@ -58,7 +58,7 @@ instruction booklet for a child or an adult builder.
 
 ````markdown
 ---
-plankmd: "0.2"
+plankmd: "0.3"
 title: <short name>
 lang: en
 inventory: <a round number at or above the plank count>
@@ -92,9 +92,12 @@ palette:
 - `#` starts a comment. Use comments to label layers (`# layer 3, z = 2`).
 - Attributes: `color=<palette name or CSS color>`, `id=<slug>`,
   `repeat=<n> offset=<dx>,<dy>,<dz>`, `rot=<degrees>`,
-  `rot-step=<degrees>`, `pivot=<px>,<py>`, `lean=<dir>:<degrees>`. Rotations
-  turn around a vertical axis, counter-clockwise seen from above, around the
-  plank's centre or around `pivot`. `lean` tips a plank over (see below).
+  `rot-step=<degrees>`, `pivot=<px>,<py>`, `lean=<dir>:<degrees>`,
+  `tilt=<x|y>:<degrees>`, `tilt-step=<degrees>`, `tilt-pivot=<h>,<z>`,
+  `order=whole`. Rotations turn around a vertical axis, counter-clockwise
+  seen from above, around the plank's centre or around `pivot`. `lean` tips a
+  plank over, `tilt` turns it around a horizontal axis, `order=whole` lays a
+  repeated line all at once (see below).
 - Metadata: put the author's name in `author` only if the user gave it,
   `license: CC0-1.0` unless told otherwise, today's date in `date`, three to
   five words in `tags`. Never invent `url`, `based-on` or `image`: leave them
@@ -206,6 +209,64 @@ up-y 6.2 0 0 lean=-x:10
 - A leaning plank alone falls. The balance check does not model leaning
   planks: check them with the drop test.
 - Use them for roofs, ramps and tents. Never for a plank that could lie flat.
+
+### Rings and domes
+
+A ring of planks lying flat around a centre is one line: `repeat=<N>`,
+`offset=0,0,0`, `rot-step=<360/N>`, `pivot=<cx>,<cy>`, and `order=whole` so
+that the ring is finished before the next line starts. Turn each ring by half
+a side (`rot=<180/N>` more than the ring below) so that every plank bridges a
+joint.
+
+```plank
+flat-x -7.5 13 0 repeat=6 offset=0,0,0 rot-step=60 pivot=0,0 order=whole
+flat-x -7.5 13 1 repeat=6 offset=0,0,0 rot=30 rot-step=60 pivot=0,0 order=whole
+```
+
+- Write the first plank tangent to the ring, centred on the pivot in `x`:
+  `flat-x <cx - 7.5> <cy + r> <z>`, `r` being the distance from the pivot to
+  its inner edge.
+- A ring of `N` planks fits without overlap when `2 r tan(180° / N) ≥ 15`:
+  `r ≥ 13` for 6 planks, 10.4 for 5, 7.5 for 4, 18.1 for 8, 23.1 for 10. Pick
+  `N` so that `360 / N` is a short number.
+- A dome: rings 1 u higher and about 1 u smaller each, with fewer planks when
+  the radius gets too small. Keep each ring within 1 u of the one below, so
+  that it rests on it. Stop with an open hole (an oculus) or close it with
+  two planks.
+- Without `order=whole`, the rings of a block are interleaved by round, one
+  plank of each ring after the other: `W-floating`.
+
+### Tilted planks: fans and true arches
+
+`tilt=<axis>:<degrees>` turns a plank around a horizontal axis: its top goes
+towards `+x` (axis `x`) or `+y` (axis `y`), any angle. `tilt-pivot=<h>,<z>`
+puts the axis at `x = h` (or `y = h`) and height `z`; `tilt-step` adds an
+angle at each repetition. A true arch is a fan of planks on their edges
+around the middle of its opening:
+
+```plank
+edge-y -0.5 0 12 repeat=19 offset=0,0,0 tilt=x:-90 tilt-step=5 tilt-pivot=0,0.5
+```
+
+- That line is half an arch: planks 11.5 u from the axis (`z = 12` for the
+  plank's bottom, axis at `z = 0.5`), from lying on the table (-90°) to
+  upright, every 5°.
+- Space planks on their edges `r` from the axis by `57.3 / r` degrees at
+  least (one thickness at the inner edge): 5° for `r = 11.5`. Less, and they
+  overlap.
+- A full arch: write the two halves as two lines in one step (`tilt=x:-90
+  tilt-step=5` and `tilt=x:90 tilt-step=-5`, 18 planks each), so that they
+  rise together, then the keystone (`tilt=x:0`) in a step of its own. Hold
+  the arch on a scaffold centring released by the keystone (`until=<id>`).
+- A fan of planks does not stand on its own: two planks in a fan touch only
+  along their inner edges, every joint has a few degrees of play, and the
+  arch falls once its centring is removed. For an arch that must carry
+  something, build a corbel arch (flat layers that each reach a little
+  further in), or keep the centring as part of the model. Use fans for what
+  is held another way: a sun, a peacock's tail, a mane, the facing of a
+  wall.
+- Tilted planks are checked like leaning planks, within 0.2 u. The balance
+  check skips them: check them with the drop test.
 
 ### Views: show each step from where it can be seen
 
@@ -345,6 +406,7 @@ empty space.
 `W-scaffold-floating` means a plank still needed its scaffold when it was
 removed: add counterweights, or remove the scaffold later with `until`.
 `W-scaffold-wedged` means the scaffold cannot slide out: leave one side
-free. `E-lean` is a malformed `lean`, `W-view` a malformed view.
-`I-unchecked-lean` means the balance check skipped a model with leaning
-planks: rely on the drop test. Fix the file and output it again in full.
+free. `E-lean` is a malformed `lean`, `E-tilt` a malformed `tilt` (or a
+`tilt-step` without `tilt`), `W-view` a malformed view.
+`I-unchecked-lean` means the balance check skipped a model with leaning or
+tilted planks: rely on the drop test. Fix the file and output it again in full.

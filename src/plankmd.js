@@ -9,11 +9,11 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const SPEC_VERSION = '0.2';
+  const SPEC_VERSION = '0.3';
   const DEFAULT_PLANK = [15, 3, 1];
   const DEFAULT_COLOR = '#e3bf86';
   const EPS = 1e-6;
-  const KNOWN_KEYS = ['color', 'id', 'repeat', 'offset', 'rot', 'rot-step', 'pivot', 'lean', 'until'];
+  const KNOWN_KEYS = ['color', 'id', 'repeat', 'offset', 'rot', 'rot-step', 'pivot', 'lean', 'tilt', 'tilt-step', 'tilt-pivot', 'order', 'until'];
   const BLOCK_KEYS = ['view', 'zoom', 'focus'];
   const NUM = /^-?\d+(\.\d+)?$/;
   const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -22,6 +22,12 @@
   // judged within this tolerance (in u, about 1.6 mm).
   const LEAN_TOLERANCE = 0.2;
   const LEAN = /^([+-])([xy]):(\d+(?:\.\d+)?)$/;
+  // A tilt turns a plank around a horizontal axis: its top goes towards +x
+  // (axis "x") or +y (axis "y") by the angle, any number of degrees.
+  const TILT = /^([xy]):(-?\d+(?:\.\d+)?)$/;
+  // The unit axis of each tilt, by the right-hand rule: the top (+z) turns
+  // towards +x around +y, towards +y around -x.
+  const TILT_AXES = { x: [0, 1, 0], y: [-1, 0, 0] };
   // Where the camera is, as an azimuth (degrees, counter-clockwise seen from
   // above, 0 on the viewer's side) and an elevation above the horizon.
   const DEFAULT_VIEW = { azimuth: 35, elevation: 28 };
@@ -381,11 +387,22 @@
         attrs.lean = { dir: `${m[1]}${m[2]}`, degrees, vector: m[2] === 'x' ? [sign, 0, 0] : [0, sign, 0] };
         continue;
       }
+      if (key === 'tilt') {
+        const m = value.match(TILT);
+        if (!m) {
+          diag(diagnostics, 'E-tilt', `Invalid tilt "${value}": expected <axis>:<degrees>, the axis x or y, e.g. x:30 (the top goes towards +x) or y:-45`, where);
+          ok = false;
+          continue;
+        }
+        attrs.tilt = { axis: m[1], degrees: Number(m[2]) };
+        continue;
+      }
       let parsed = value;
       if (key === 'repeat') parsed = /^\d+$/.test(value) && Number(value) >= 1 ? Number(value) : null;
       else if (key === 'offset') parsed = parseNums(value, 3);
-      else if (key === 'pivot') parsed = parseNums(value, 2);
-      else if (key === 'rot' || key === 'rot-step') parsed = NUM.test(value) ? Number(value) : null;
+      else if (key === 'pivot' || key === 'tilt-pivot') parsed = parseNums(value, 2);
+      else if (key === 'rot' || key === 'rot-step' || key === 'tilt-step') parsed = NUM.test(value) ? Number(value) : null;
+      else if (key === 'order') parsed = value === 'whole' || value === 'round' ? value : null;
       else if (key === 'id' || key === 'until') parsed = SLUG.test(value) ? value : null;
       else if (key === 'color') parsed = value || null;
       if (parsed === null) { diag(diagnostics, 'E-parse', `Invalid value for ${key}: "${value}"`, where); ok = false; continue; }
@@ -393,6 +410,14 @@
     }
     if (attrs.repeat !== undefined && !attrs.offset) {
       diag(diagnostics, 'E-parse', '"repeat" needs an "offset"', where);
+      ok = false;
+    }
+    if (!attrs.tilt && (attrs['tilt-step'] !== undefined || attrs['tilt-pivot'])) {
+      diag(diagnostics, 'E-tilt', `"${attrs['tilt-step'] !== undefined ? 'tilt-step' : 'tilt-pivot'}" needs a "tilt", e.g. tilt=x:0`, where);
+      ok = false;
+    }
+    if (attrs.tilt && attrs.lean) {
+      diag(diagnostics, 'E-tilt', 'A plank cannot both lean and tilt: use one of them', where);
       ok = false;
     }
     if (!ok) return null;
@@ -480,7 +505,9 @@
    * points. A leaning plank (`lean`) is first tipped over towards its
    * direction, pivoting on the bottom edge on that side, then turned by
    * `rot` like any plank, around the vertical axis through the centre of its
-   * box before the lean (or `pivot`).
+   * box before the lean (or `pivot`). A tilted plank (`tilt`) is first
+   * turned around its horizontal axis, through `tilt-pivot` or the centre of
+   * its box, then turned by `rot` the same way.
    */
   function expandLine(line, meta) {
     const size = ORIENTATIONS[line.orientation](meta.plank);
@@ -488,6 +515,7 @@
     const a = line.attrs;
     const count = a.repeat || 1;
     const offset = a.offset || [0, 0, 0];
+    const slanted = !!(a.lean || a.tilt);
     const out = [];
     for (let i = 0; i < count; i++) {
       const pos = line.position.map((v, j) => v + i * offset[j]);
@@ -504,6 +532,19 @@
       // The centre's shift and the axes, in the frame of the box before `rot`.
       let rel = [0, 0, 0];
       let axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+      const tilt = a.tilt ? { axis: a.tilt.axis, degrees: a.tilt.degrees + i * (a['tilt-step'] || 0) } : null;
+      if (tilt) {
+        // Around a horizontal axis through the pivot (in the file's frame,
+        // fixed like `pivot`), or through the centre of the box.
+        const k = TILT_AXES[tilt.axis];
+        const phi = (tilt.degrees * Math.PI) / 180;
+        const box = [pos[0] + half[0], pos[1] + half[1], pos[2] + half[2]];
+        const tp = a['tilt-pivot'];
+        const p = !tp ? box : tilt.axis === 'x' ? [tp[0], box[1], tp[1]] : [box[0], tp[0], tp[1]];
+        const moved = turn(box.map((v, j) => v - p[j]), k, phi);
+        rel = moved.map((v, j) => p[j] + v - box[j]);
+        axes = axes.map((v) => turn(v, k, phi));
+      }
       if (a.lean) {
         const d = a.lean.vector;
         const k = cross([0, 0, 1], d);
@@ -528,12 +569,13 @@
         size,
         rotation: degrees,
         lean: a.lean ? { dir: a.lean.dir, degrees: a.lean.degrees } : null,
+        tilt,
         axes,
         center,
         corners,
-        z0: a.lean ? Math.min(...corners.map((q) => q[2])) : pos[2],
-        z1: a.lean ? Math.max(...corners.map((q) => q[2])) : pos[2] + size[2],
-        footprint: a.lean ? hull(corners.map((q) => [q[0], q[1]])) : footprint(cx, cy, half[0], half[1], theta),
+        z0: slanted ? Math.min(...corners.map((q) => q[2])) : pos[2],
+        z1: slanted ? Math.max(...corners.map((q) => q[2])) : pos[2] + size[2],
+        footprint: slanted ? hull(corners.map((q) => [q[0], q[1]])) : footprint(cx, cy, half[0], half[1], theta),
         color: (!line.guide && a.color && (meta.palette[a.color] || a.color)) || DEFAULT_COLOR,
         id: a.id ? (count > 1 ? `${a.id}-${i + 1}` : a.id) : null,
         step: line.step,
@@ -561,8 +603,9 @@
    *   kind: 'plank' | 'scaffold' | 'remove', step, plank | scaffold |
    *   scaffolds }. Every plank and scaffold plank knows its `move`, and every
    *   scaffold plank the move that removes it (`removed`).
-   * Within a step, ordinary lines are interleaved by round; a scaffold line
-   * is placed whole, all its repetitions in a row, in round 0. A scaffold is
+   * Within a step, ordinary lines are interleaved by round; a scaffold line,
+   * or a line with `order=whole`, is placed whole, all its repetitions in a
+   * row, in round 0. A scaffold is
    * removed after the plank its `until` names, or after the last plank of
    * its step. Guides are not in the sequence (see `guides`).
    */
@@ -570,10 +613,11 @@
     const base = [];
     for (const step of doc.steps) {
       const groups = step.lines.filter((line) => !line.guide).map((line) => ({ line, items: expandLine(line, doc.meta) }));
-      const rounds = Math.max(0, ...groups.map((g) => (g.line.scaffold ? Math.min(1, g.items.length) : g.items.length)));
+      const whole = (line) => line.scaffold || line.attrs.order === 'whole';
+      const rounds = Math.max(0, ...groups.map((g) => (whole(g.line) ? Math.min(1, g.items.length) : g.items.length)));
       for (let round = 0; round < rounds; round++) {
         for (const g of groups) {
-          if (g.line.scaffold) { if (round === 0) for (const it of g.items) base.push(it); }
+          if (whole(g.line)) { if (round === 0) for (const it of g.items) base.push(it); }
           else if (g.items.length > round) base.push(g.items[round]);
         }
       }
@@ -694,12 +738,12 @@
     return g;
   }
 
-  const leaning = (p, q) => !!(p.lean || q.lean);
-  // Level planks are checked exactly; planks that lean within LEAN_TOLERANCE.
+  const leaning = (p, q) => !!(p.lean || q.lean || p.tilt || q.tilt);
+  // Level planks are checked exactly; planks that lean or tilt within LEAN_TOLERANCE.
   const overlaps = (p, q) => (leaning(p, q)
     ? gap(p, q) < -LEAN_TOLERANCE
     : p.z0 < q.z1 - EPS && q.z0 < p.z1 - EPS && !separated(p.footprint, q.footprint));
-  // A level plank rests on the top face of another. With a leaning plank,
+  // A level plank rests on the top face of another. With a leaning or tilted plank,
   // touching counts, as long as the support is not entirely above.
   const restsOn = (p, q) => (leaning(p, q)
     ? q.z0 < p.z0 + LEAN_TOLERANCE && gap(p, q) <= LEAN_TOLERANCE
@@ -711,9 +755,9 @@
 
   // A scaffold plank that carries something slides out sideways or along its
   // length, whichever way is free. With planks against it on every side, it
-  // cannot. Leaning scaffolds are not checked.
+  // cannot. Leaning and tilted scaffolds are not checked.
   function wedged(r, others) {
-    if (r.lean) return false;
+    if (r.lean || r.tilt) return false;
     const sides = r.axes.map((u, j) => [u, r.size[j] / 2]).filter(([u]) => Math.abs(u[2]) < 0.5);
     const proj = (q, u) => q.corners.map((k) => dot(k, u));
     const blocked = (u, h, sign) => {

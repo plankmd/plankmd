@@ -76,7 +76,7 @@ const nav = (t: Record<string, string>, prefix: string): DefaultTheme.NavItem[] 
   { text: t.use, link: `${prefix}/use` },
   { text: t.llm, link: `${prefix}/llm` },
   {
-    text: 'v0.2',
+    text: 'v0.3',
     items: [
       { text: t.changelog, link: `${prefix}/changelog` },
       { text: t.contributing, link: `${GITHUB}/blob/main/CONTRIBUTING.md` },

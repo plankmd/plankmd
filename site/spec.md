@@ -1,6 +1,6 @@
 ---
 title: Specification
-description: The PlankMD v0.2 format specification
+description: The PlankMD v0.3 format specification
 ---
 
 <!-- The specification lives in SPEC.md at the root of the repository. -->

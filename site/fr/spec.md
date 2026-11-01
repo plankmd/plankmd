@@ -1,14 +1,14 @@
 ---
 title: Spécification
-description: La spécification du format PlankMD v0.2, en français
+description: La spécification du format PlankMD v0.3, en français
 ---
 
 <!--
-  French translation of SPEC.md (PlankMD v0.2). SPEC.md is the reference:
+  French translation of SPEC.md (PlankMD v0.3). SPEC.md is the reference:
   when it changes, update this page in the same pull request.
 -->
 
-# PlankMD : spécification du format v0.2
+# PlankMD : spécification du format v0.3
 
 ::: info Traduction
 Cette page est une traduction. La version de référence est
@@ -18,11 +18,14 @@ Cette page est une traduction. La version de référence est
 > Statut : brouillon, octobre 2026
 > Licence : MIT
 >
-> La v0.2 ajoute les [planchettes inclinées](#planchettes-inclinees-niveau-2),
+> La v0.3 ajoute les [planchettes basculées](#planchettes-basculees-niveau-2),
+> qui tournent autour d'un axe horizontal (les éventails d'une vraie arche),
+> et les [lignes d'un seul tenant](#ordre-de-pose), posées en une fois (les
+> anneaux d'une coupole). Tout fichier v0.2 est un fichier v0.3 valide, de
+> même sens (voir [Changements depuis la v0.2](#changements-depuis-la-v0-2)).
+> La v0.2 avait ajouté les [planchettes inclinées](#planchettes-inclinees-niveau-2),
 > les [étais](#etais-niveau-2), les [indications de vue](#indications-de-vue-niveau-2)
 > et les [métadonnées des modèles partagés](#metadonnees-des-modeles-partages).
-> Tout fichier v0.1 est un fichier v0.2 valide, de même sens (voir
-> [Changements depuis la v0.1](#changements-depuis-la-v0-1)).
 
 ---
 
@@ -59,7 +62,7 @@ de la RFC 2119.
 |---|---|---|
 | 0 | Un bloc ` ```plank `, une planchette par ligne | Une construction en une seule étape |
 | 1 | Frontmatter YAML ; plusieurs blocs = plusieurs étapes | Métadonnées, taille de planchette, étapes de montage |
-| 2 | Attributs par ligne (`color`, `id`, `repeat`, `rot`, `pivot`, `lean`…), gabarits, étais et indications de vue | Couleurs, noms, répétitions compactes, angles libres, planchettes inclinées, mesure des écarts, soutiens provisoires, points de vue |
+| 2 | Attributs par ligne (`color`, `id`, `repeat`, `rot`, `pivot`, `lean`, `tilt`, `order`…), gabarits, étais et indications de vue | Couleurs, noms, répétitions compactes, angles libres, anneaux et spirales, planchettes inclinées et basculées, mesure des écarts, soutiens provisoires, points de vue |
 
 Chaque niveau contient strictement le précédent.
 
@@ -124,7 +127,7 @@ flat-y 12 0 1
 
 ```yaml
 ---
-plankmd: "0.2"            # version de la spec (obligatoire au niveau 1)
+plankmd: "0.3"            # version de la spec (obligatoire au niveau 1)
 title: Small square tower # obligatoire au niveau 1
 lang: en                  # BCP 47, optionnel
 plank: [15, 3, 1]         # L, W, T en unités ; par défaut [15, 3, 1]
@@ -208,6 +211,10 @@ Après les quatre champs de position, une ligne peut porter des attributs
 | `rot-step` | degrés | Rotation ajoutée à chaque répétition (spirales) |
 | `pivot` | `px,py` | Axe vertical de `rot` et `rot-step`, à la place du centre de la planchette. La planchette tourne autour, position comprise |
 | `lean` | `<dir>:<degrés>` | Incline la planchette : voir les [planchettes inclinées](#planchettes-inclinees-niveau-2) |
+| `tilt` | `<axe>:<degrés>` | Fait basculer la planchette autour d'un axe horizontal : voir les [planchettes basculées](#planchettes-basculees-niveau-2) |
+| `tilt-step` | degrés | Bascule ajoutée à chaque répétition (éventails, arches) |
+| `tilt-pivot` | `h,z` | Axe horizontal de `tilt` et `tilt-step`, à la place du centre de la planchette |
+| `order` | `round` ou `whole` | `whole` pose toutes les répétitions de la ligne à la suite, avant la ligne suivante : voir l'[ordre de pose](#ordre-de-pose). Par défaut : `round` |
 | `until` | `id` | Sur une ligne d'étai seulement : la planchette dont la pose libère l'étai. Voir les [étais](#etais-niveau-2) |
 
 La répétition `i` (à partir de 0) se place en `position + i × offset`, puis
@@ -225,7 +232,42 @@ flat-x 0 -1.5 0 repeat=36 offset=0,0,1 rot-step=10 pivot=0,0    # escalier en co
 ````
 
 `rot` ne tourne qu'autour d'un axe vertical. Pour incliner une planchette,
-utiliser `lean`.
+utiliser `lean` ; pour la faire basculer autour d'un axe horizontal, `tilt`.
+
+### Anneaux et spirales
+
+`rot-step` avec un `pivot` fait tourner chaque répétition un peu plus loin
+autour du même axe vertical. Sans `offset` entre les répétitions, les
+planchettes font le tour du pivot à la même hauteur : un **anneau**. Avec un
+`offset` vers le haut, elles montent en tournant : une **spirale**.
+
+````markdown
+```plank
+flat-x -7.5 13 0 repeat=6 offset=0,0,0 rot-step=60 pivot=0,0 order=whole
+flat-x -7.5 13 1 repeat=6 offset=0,0,0 rot=30 rot-step=60 pivot=0,0 order=whole
+```
+````
+
+Chaque ligne est un anneau de six planchettes autour de `0,0`, une tous les
+60°. Le second anneau est tourné d'un demi-côté (`rot=30`), pour que chaque
+planchette passe par-dessus un joint de l'anneau du dessous : c'est ainsi
+qu'on monte les tambours, les tourelles, les coupoles et les sphères.
+`order=whole` pose chaque anneau en entier avant le suivant (voir
+l'[ordre de pose](#ordre-de-pose)).
+
+Un anneau de `N` planchettes de longueur `L`, dont les bords intérieurs sont
+à `r` du pivot, ne se chevauche pas aux coins quand
+`2 r tan(180° / N) ≥ L` : avec la planchette par défaut, `r ≥ 13` pour six
+planchettes, `r ≥ 18,1` pour huit, `r ≥ 23,1` pour dix. Une coupole est une
+pile d'anneaux, chacun un peu plus petit que celui du dessous, qui prend
+moins de planchettes quand son rayon devient trop petit pour elles.
+
+```plank
+flat-x -7.5 -1.5 0 repeat=24 offset=0,0,1 rot-step=15 pivot=0,0
+```
+
+Une spirale : 24 planchettes, chacune plus haute d'une épaisseur que la
+précédente et tournée de 15° de plus, un tour complet autour de `0,0`.
 
 ---
 
@@ -274,6 +316,85 @@ Les gabarits peuvent aussi être inclinés, pour mesurer une pente.
 
 ---
 
+## Planchettes basculées (niveau 2)
+
+Une vraie arche est un éventail : des planchettes sur la tranche, disposées
+comme des rayons autour du milieu de l'ouverture, chacune tournée un peu plus
+que la précédente. Ses planchettes tournent autour d'un axe **horizontal**,
+ce que `rot` ne sait pas faire, et autour d'un axe commun, ce que `lean` ne
+sait pas faire (une planchette inclinée pivote sur sa propre arête). `tilt`
+fait basculer une planchette autour d'un axe horizontal, et `tilt-step` et
+`tilt-pivot` posent un éventail, comme `rot-step` et `pivot` posent un
+anneau.
+
+| Attribut | Valeur | Sens |
+|---|---|---|
+| `tilt` | `<axe>:<degrés>` | `<axe>` vaut `x` ou `y` : le haut de la planchette part vers `+x` ou vers `+y` de cet angle. N'importe quel angle, négatif compris |
+| `tilt-step` | degrés | Ajouté à la bascule à chaque répétition |
+| `tilt-pivot` | `h,z` | L'axe passe par `x = h` (pour `tilt=x:…`) ou `y = h` (pour `tilt=y:…`), à la hauteur `z`. Il court le long de `y` (ou de `x`). Par défaut : par le centre de la boîte de la planchette |
+
+```plank
+edge-y -0.5 0 12 repeat=19 offset=0,0,0 tilt=x:-90 tilt-step=5 tilt-pivot=0,0.5
+```
+
+Une demi-arche : une planchette sur la tranche, à 11,5 u au-dessus de l'axe
+`x = 0, z = 0,5`, basculée de -90° (son haut vers `-x`, elle est donc couchée
+sur la table, à gauche), puis redressée de 5° à chaque répétition, jusqu'en
+haut. Chaque planchette repose sur celle du dessous.
+
+- La position `x y z` reste le coin minimum de la boîte **avant** la bascule.
+- La répétition `i` bascule de `tilt + i × tilt-step` autour de
+  `tilt-pivot`. Le pivot ne suit pas `offset` : un `offset` le long de l'axe
+  fait glisser l'éventail le long de lui, comme pour `pivot`.
+- `tilt` s'applique avant `rot` : la planchette basculée tourne ensuite d'un
+  bloc autour de l'axe vertical qui passe par le centre de sa boîte avant la
+  bascule, ou autour de `pivot`.
+- Une planchette ne peut pas à la fois pencher (`lean`) et basculer
+  (`E-tilt`). `tilt-step` et `tilt-pivot` demandent un `tilt` (`E-tilt`) :
+  écrire `tilt=x:0` pour commencer un éventail à la verticale.
+- Les planchettes basculées se vérifient comme les planchettes inclinées,
+  avec la même tolérance (voir [Validation](#validation)).
+
+**Espacer un éventail.** Des planchettes sur la tranche à `r` de l'axe se
+touchent par leurs bords intérieurs quand le pas vaut `T / r` radians, `T`
+étant l'épaisseur de la planchette : 5° pour `r = 11,5` avec la planchette
+par défaut. Avec un pas plus petit, elles passent les unes dans les autres.
+
+**Construire une arche.** Chaque moitié d'une arche repose sur elle-même en
+montant, mais la clé de voûte, en haut, se pose en dernier, une fois les deux
+moitiés montées. On monte d'habitude les deux moitiés ensemble, puis la clé
+dans une étape à part, sur un [étai](#etais-niveau-2) qu'on appelle un
+cintre :
+
+````markdown
+## Step 1: the two halves
+
+```plank
+scaffold flat-y -10.5 0 0 repeat=7 offset=3,0,0 until=key
+edge-y -0.5 0 12 repeat=18 offset=0,0,0 tilt=x:-90 tilt-step=5 tilt-pivot=0,0.5
+edge-y -0.5 0 12 repeat=18 offset=0,0,0 tilt=x:90 tilt-step=-5 tilt-pivot=0,0.5
+```
+
+## Step 2: the keystone
+
+```plank
+edge-y -0.5 0 12 tilt=x:0 tilt-pivot=0,0.5 id=key
+```
+````
+
+Les deux lignes de l'étape 1 s'entrelacent par tour : une planchette à
+gauche, une planchette à droite, et ainsi de suite jusqu'en haut. Dans la
+même étape, la clé, une planchette seule, serait posée au tour 0, avant que
+rien ne la tienne.
+
+Une arche valide n'est pas une arche qui tient debout (voir
+[Validation](#validation)) : dans un éventail, deux planchettes ne se
+touchent que par leurs bords intérieurs, chaque joint est donc une charnière
+avec quelques degrés de jeu, et le test de chute des outils de référence
+voit une telle arche tomber une fois son cintre retiré (`samples/fan-arch`).
+
+---
+
 ## Ordre de pose
 
 On pose les planchettes une par une, et le fichier dit dans quel ordre :
@@ -299,8 +420,25 @@ se pose A₀, B₀, A₁, B₁, A₂, B₂, A₃, B₃ : couche après couche, c
 reposant sur des planchettes posées avant elle. Pour poser toutes les
 répétitions d'une ligne avant la ligne suivante, les mettre dans deux étapes.
 
-Une ligne d'[étai](#etais-niveau-2) fait exception : elle se pose d'un bloc,
-toutes ses répétitions à la suite, au tour 0, à sa place parmi les lignes.
+Une ligne avec **`order=whole`** fait exception : elle se pose d'un seul
+tenant, toutes ses répétitions à la suite, au tour 0, à sa place parmi les
+lignes. C'est ainsi qu'on écrit les anneaux d'une coupole : chaque anneau
+est fini avant que le suivant commence, dans un seul bloc. Une ligne
+d'[étai](#etais-niveau-2) se pose toujours d'un seul tenant. `order=round`,
+la valeur par défaut, dit que la ligne va par tours.
+
+````markdown
+```plank
+flat-x -7.5 24 0 repeat=10 offset=0,0,0 rot-step=36 pivot=0,0 order=whole
+flat-x -7.5 23 1 repeat=9 offset=0,0,0 rot=18 rot-step=40 pivot=0,0 order=whole
+flat-x -7.5 22 2 repeat=9 offset=0,0,0 rot=38 rot-step=40 pivot=0,0 order=whole
+```
+````
+
+se pose en dix planchettes du premier anneau, puis neuf du deuxième, puis
+neuf du troisième. Sans `order=whole`, la première planchette de chaque
+anneau viendrait d'abord, l'une au-dessus de l'autre, puis la deuxième de
+chacun, et ainsi de suite.
 
 **Gestes.** Ce que fait le constructeur, dans l'ordre, est une suite de
 **gestes** : poser une planchette, poser un étai, ou retirer des étais. Sans
@@ -535,6 +673,7 @@ fichier.
 | `W-floating` | avertissement | Une planchette avec `z > 0` ne repose sur rien quand elle est posée : aucune planchette posée avant elle n'a sa face du dessus en contact avec la face du dessous de la nouvelle, sur une surface non nulle. Un contact sur le côté ne compte pas, ni une planchette posée après, même dans la même étape. Pour une planchette inclinée, voir plus bas |
 | `W-inventory` | avertissement | Plus de planchettes en place en même temps que `inventory`, étais compris |
 | `E-lean` | erreur | Une valeur de `lean` n'est pas `<dir>:<degrés>` avec une direction parmi `+x`, `-x`, `+y`, `-y` et un angle strictement entre 0 et 90 |
+| `E-tilt` | erreur | Une valeur de `tilt` n'est pas `<axe>:<degrés>` avec un axe `x` ou `y` ; ou `tilt-step` ou `tilt-pivot` sans `tilt` ; ou une planchette qui à la fois penche et bascule |
 | `W-unchecked-lean` | avertissement | Le validateur ne sait pas vérifier exactement une planchette inclinée. Il DOIT le dire plutôt que de déclarer la planchette valide |
 | `W-scaffold-release` | avertissement | `until` ne nomme aucune planchette, nomme un étai, ou nomme une planchette posée avant l'étai. L'étai est retiré à la fin de son étape |
 | `W-scaffold-floating` | avertissement | Une fois des étais retirés, une planchette qui reposait dessus ne repose plus sur rien |
@@ -567,14 +706,15 @@ exact (théorème de l'axe séparateur sur les deux emprises) tient en quelques
 lignes ; les validateurs DEVRAIENT l'implémenter plutôt que de se rabattre
 sur `W-unchecked-rotation`.
 
-**Les planchettes inclinées** sont des boîtes tournées dans l'espace. Les
+**Les planchettes inclinées et basculées** sont des boîtes tournées dans l'espace. Les
 chevauchements se vérifient comme entre boîtes (théorème de l'axe séparateur
 sur les quinze axes de deux boîtes). Une planchette inclinée touche ses
 appuis le long d'une arête ou par un coin, sous un angle que l'auteur
 arrondit : quand l'une des deux planchettes est inclinée, elles ne se
 chevauchent que si elles partagent un volume plus profond qu'une **tolérance
 de 0,2 u** (environ 1,6 mm), et elles se touchent quand elles sont à moins de
-0,2 u l'une de l'autre. Une planchette repose sur quelque chose quand elle
+0,2 u l'une de l'autre. Il en va de même pour une planchette basculée. Une
+planchette repose sur quelque chose quand elle
 touche le sol, ou une planchette posée avant elle qui n'est pas entièrement
 au-dessus d'elle. Toucher n'est pas tenir : savoir si une planchette
 inclinée reste en place relève d'un calcul physique.
@@ -594,8 +734,11 @@ line        = [ ( "guide" | "scaffold" ) ws ] orientation ws num ws num ws num {
             | [ ws? comment ] ;
 orientation = ( "flat" | "edge" | "up" ) "-" ( "x" | "y" ) ;
 attribute   = key "=" value ;
-key         = "color" | "id" | "repeat" | "offset" | "rot" | "rot-step" | "pivot" | "lean" | "until" ;
+key         = "color" | "id" | "repeat" | "offset" | "rot" | "rot-step" | "pivot" | "lean"
+            | "tilt" | "tilt-step" | "tilt-pivot" | "order" | "until" ;
 lean        = ( "+" | "-" ) ( "x" | "y" ) ":" num ;
+tilt        = ( "x" | "y" ) ":" num ;
+order       = "round" | "whole" ;
 num         = [ "-" ] digit { digit } [ "." digit { digit } ] ;
 comment     = "#" { any character } ;
 
@@ -619,8 +762,10 @@ anciens.
 - **Par où sort un étai** : un attribut `out=<direction>` sur une ligne
   d'étai, dont le validateur vérifierait qu'il est libre, et que la notice
   dirait au constructeur.
-- **Éventails de planchettes inclinées** : un `lean-step`, chaque répétition
-  un peu plus inclinée.
+- **Répétition imbriquée** : une coupole, c'est une ligne `order=whole` par
+  anneau. Une ligne qui répète des anneaux, avec un rayon qui diminue et un
+  nombre de planchettes qui baisse, la ferait tenir en une ligne, au prix
+  d'une grammaire et d'un ordre de pose plus compliqués.
 - **Traductions et planchette tenue à la main** : des propositions dans
   `docs/proposals/` (`translations.md`, `hold.md`). Les outils de référence
   lisent déjà les traductions.
@@ -629,6 +774,24 @@ anciens.
 - **Stabilité** : savoir si un calcul d'équilibre commun et déterministe a sa
   place dans la spec ou reste une fonction des outils. L'implémentation de
   référence en a un (`src/physics.js`), signalé sous des codes `I-`.
+
+---
+
+## Changements depuis la v0.2
+
+La v0.3 ne fait qu'ajouter : un fichier v0.2 est un fichier v0.3 valide, de
+même sens.
+
+- **Planchettes basculées** : les attributs `tilt`, `tilt-step` et
+  `tilt-pivot`, `E-tilt`, et la tolérance des planchettes inclinées pour les
+  planchettes basculées. Elles répondent à la question ouverte des éventails
+  de planchettes inclinées.
+- **Lignes d'un seul tenant** : l'attribut `order` ; `order=whole` pose une
+  ligne répétée en une fois, comme une ligne d'étai.
+
+Un fichier qui utilise l'un de ces ajouts DEVRAIT indiquer `plankmd: "0.3"`,
+pour qu'un lecteur v0.2 signale la version avant de mal construire un
+éventail ou un anneau.
 
 ---
 

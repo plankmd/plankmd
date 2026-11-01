@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Format v0.3 (`SPEC.md`, and the French spec on the website). Every v0.2
+  file stays valid and means the same.
+  - **Tilted planks**: `tilt=<axis>:<degrees>` turns a plank around a
+    horizontal axis, `tilt-step` adds an angle at each repetition and
+    `tilt-pivot` sets the axis: the fan of a true arch is one line. Checked
+    as boxes within 0.2 u, like leaning planks (`E-tilt`). Proposal:
+    `docs/proposals/tilt.md`.
+  - **Whole lines**: `order=whole` places a repeated line all at once, as a
+    scaffold line is, so the rings of a dome go in one block. Proposal:
+    `docs/proposals/order.md`.
+  - **Rings and spirals**: a new section of the spec on `rot-step` with a
+    `pivot`, with the rule for a ring without overlaps.
+- Balance check: skips tilted planks too (`I-unchecked-lean`).
+- Samples: a ring dome, and a fan arch that falls on purpose once its
+  centring comes out: planks in a fan only touch along their inner edges.
+- Gallery: the Pantheon under a ring dome, in English and French.
+- LLM instructions: rings and domes, fans and true arches.
+
 - Format v0.2 (`SPEC.md`, and the French spec on the website). Every v0.1
   file stays valid and means the same.
   - **Leaning planks**: `lean=<dir>:<degrees>` tips a plank over, pivoting on
