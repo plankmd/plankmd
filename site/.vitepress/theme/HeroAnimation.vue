@@ -8,7 +8,6 @@
 // picture when the system asks for reduced motion.
 
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useData } from 'vitepress'
 
 type Model = { path: string, falls?: boolean }
 const MODELS: Model[] = [
@@ -20,7 +19,6 @@ const MODELS: Model[] = [
 ]
 const RAPIER_URL = 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.20.0/dist/rapier.mjs'
 
-const { lang } = useData()
 const host = ref<HTMLDivElement>()
 const title = ref('')
 const status = ref('')
@@ -120,7 +118,7 @@ onMounted(async () => {
     const center = box.getCenter(new THREE.Vector3())
     const size = box.getSize(new THREE.Vector3())
     title.value = result.meta.title || ''
-    href.value = `/player/${lang.value.startsWith('fr') ? '?lang=fr' : ''}#${model.path.replace(/^samples\//, '')}`
+    href.value = `/player/#${model.path.replace(/^samples\//, '')}`
     return { model, planks: result.planks, meshes, center, radius: Math.max(10, box.getBoundingSphere(new THREE.Sphere()).radius), height: size.y }
   }
 
@@ -225,7 +223,7 @@ onBeforeUnmount(() => stop?.())
 <template>
   <div class="hero-anim">
     <div ref="host" class="hero-anim-scene" aria-hidden="true"></div>
-    <button v-if="paused" class="hero-anim-play" type="button" :aria-label="lang.startsWith('fr') ? 'Voir les modèles se construire' : 'Watch the models build'" @click="play?.()">▶</button>
+    <button v-if="paused" class="hero-anim-play" type="button" aria-label="Watch the models build" @click="play?.()">▶</button>
     <a class="hero-anim-caption" :href="href" target="_self">
       <span class="hero-anim-title">{{ title }}</span>
       <span class="hero-anim-count">{{ status }}</span>

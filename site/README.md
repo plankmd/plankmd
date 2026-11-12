@@ -24,12 +24,9 @@ The PlankMD examples of the spec and the home page get a live 3D preview
 `config.mts`), drawn with the reference implementation, and a link that opens
 them in the player (`/player/#code=<base64url>`).
 
-The site is in English (root) and French (`fr/`). On a first visit, a
-visitor whose browser prefers French to English is sent to the French page
-(`.vitepress/lang-redirect.js`); following a link to the other language
-records the choice. `fr/spec.md` is a translation of `SPEC.md`, which is the
-reference: update both together. The French LLM page includes the English
-system prompt, which stays the same in every language.
+The site is in English only. The former French pages (`/fr/...`) redirect
+to the English ones (`public/_redirects`). The player and the gallery keep
+their own EN/FR switch (`player/i18n.js`).
 
 The site is deployed by Cloudflare Workers Builds on every push to `main`:
 the Worker `plankmd` serves `site/.vitepress/dist` as static assets

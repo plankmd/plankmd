@@ -1,12 +1,8 @@
-import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { defineConfig, type DefaultTheme } from 'vitepress'
 
 const GITHUB = 'https://github.com/plankmd/plankmd'
 const SITE = 'https://plankmd.org'
-
-// Sends French-speaking visitors to /fr/ on their first visit.
-const langRedirect = readFileSync(new URL('./lang-redirect.js', import.meta.url), 'utf8')
 
 // Syntax highlighting for ```plank blocks.
 const plankGrammar = {
@@ -32,7 +28,7 @@ const editLinkPattern = ({ filePath }: { filePath: string }) => {
 const PlankMD = createRequire(import.meta.url)('../../src/plankmd.js')
 
 // Pages whose PlankMD examples get a 3D preview next to them.
-const PREVIEW_PAGES = ['index.md', 'spec.md', 'fr/index.md', 'fr/spec.md']
+const PREVIEW_PAGES = ['index.md', 'spec.md']
 
 // Adds a 3D preview (PlankPreview.vue) to every example that contains
 // planks: ```plank blocks, and ```markdown blocks that quote one. An example
@@ -69,17 +65,17 @@ function plankPreviews(md: any) {
   }
 }
 
-const nav = (t: Record<string, string>, prefix: string): DefaultTheme.NavItem[] => [
-  { text: t.spec, link: `${prefix}/spec` },
-  { text: t.player, link: prefix ? `/player/?lang=${prefix.slice(1)}` : '/player/', target: '_self' },
-  { text: t.gallery, link: `${prefix}/gallery` },
-  { text: t.use, link: `${prefix}/use` },
-  { text: t.llm, link: `${prefix}/llm` },
+const nav: DefaultTheme.NavItem[] = [
+  { text: 'Spec', link: '/spec' },
+  { text: 'Player', link: '/player/', target: '_self' },
+  { text: 'Gallery', link: '/gallery' },
+  { text: 'Use it', link: '/use' },
+  { text: 'LLMs', link: '/llm' },
   {
     text: 'v0.3',
     items: [
-      { text: t.changelog, link: `${prefix}/changelog` },
-      { text: t.contributing, link: `${GITHUB}/blob/main/CONTRIBUTING.md` },
+      { text: 'Changelog', link: '/changelog' },
+      { text: 'Contributing', link: `${GITHUB}/blob/main/CONTRIBUTING.md` },
     ],
   },
 ]
@@ -91,50 +87,8 @@ export default defineConfig({
   lastUpdated: false,
   cleanUrls: true,
 
-  locales: {
-    root: {
-      label: 'English',
-      lang: 'en',
-      description: 'An open Markdown format for wooden plank constructions and their building steps',
-      themeConfig: {
-        nav: nav({ spec: 'Spec', player: 'Player', gallery: 'Gallery', use: 'Use it', llm: 'LLMs', changelog: 'Changelog', contributing: 'Contributing' }, ''),
-        editLink: { pattern: editLinkPattern, text: 'Edit this page on GitHub' },
-        footer: {
-          message: 'PlankMD is created and maintained by <a href="https://empilo.app">Empilo.app</a>.<br>Specification and code under the MIT License. Models under CC0.',
-          copyright: 'PlankMD contributors',
-        },
-      },
-    },
-    fr: {
-      label: 'Français',
-      lang: 'fr',
-      link: '/fr/',
-      description: 'Un format Markdown ouvert pour les constructions en planchettes de bois et leurs étapes de montage',
-      themeConfig: {
-        nav: nav({ spec: 'Spec', player: 'Lecteur', gallery: 'Galerie', use: 'Utiliser', llm: 'LLM', changelog: 'Historique', contributing: 'Contribuer' }, '/fr'),
-        editLink: { pattern: editLinkPattern, text: 'Modifier cette page sur GitHub' },
-        footer: {
-          message: 'PlankMD est créé et maintenu par <a href="https://empilo.app">Empilo.app</a>.<br>Spécification et code sous licence MIT. Modèles sous CC0.',
-          copyright: 'Les contributeurs de PlankMD',
-        },
-        outline: { level: [2, 3], label: 'Sur cette page' },
-        docFooter: { prev: 'Page précédente', next: 'Page suivante' },
-        langMenuLabel: 'Changer de langue',
-        returnToTopLabel: 'Retour en haut',
-        sidebarMenuLabel: 'Menu',
-        darkModeSwitchLabel: 'Thème',
-        lightModeSwitchTitle: 'Passer au thème clair',
-        darkModeSwitchTitle: 'Passer au thème sombre',
-        skipToContentLabel: 'Aller au contenu',
-        notFound: {
-          title: 'PAGE INTROUVABLE',
-          quote: 'Cette planchette ne repose sur rien.',
-          linkLabel: "Retour à l'accueil",
-          linkText: "Retour à l'accueil",
-        },
-      },
-    },
-  },
+  lang: 'en',
+  description: 'An open Markdown format for wooden plank constructions and their building steps',
 
   markdown: {
     languages: [plankGrammar as any],
@@ -157,7 +111,6 @@ export default defineConfig({
   },
 
   head: [
-    ['script', {}, langRedirect],
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
     ['link', { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico', sizes: '48x48' }],
     ['link', { rel: 'apple-touch-icon', href: '/logo-192.png' }],
@@ -166,17 +119,11 @@ export default defineConfig({
     ['meta', { property: 'og:title', content: 'PlankMD' }],
   ],
 
-  // Every page exists in both languages: tell search engines.
   transformHead({ pageData }) {
     if (pageData.isNotFound) return []
     const path = pageData.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
-    const en = path.replace(/^fr\/?/, '')
-    const url = (p: string) => `${SITE}/${p}`
     return [
-      ['link', { rel: 'alternate', hreflang: 'en', href: url(en) }],
-      ['link', { rel: 'alternate', hreflang: 'fr', href: url(`fr/${en}`) }],
-      ['link', { rel: 'alternate', hreflang: 'x-default', href: url(en) }],
-      ['link', { rel: 'canonical', href: url(path) }],
+      ['link', { rel: 'canonical', href: `${SITE}/${path}` }],
       ['meta', { property: 'og:description', content: pageData.description || '' }],
     ]
   },
@@ -188,26 +135,14 @@ export default defineConfig({
 
   themeConfig: {
     logo: '/logo.svg',
+    nav,
     outline: { level: [2, 3] },
-    socialLinks: [{ icon: 'github', link: GITHUB }],
-    search: {
-      provider: 'local',
-      options: {
-        locales: {
-          fr: {
-            translations: {
-              button: { buttonText: 'Rechercher', buttonAriaLabel: 'Rechercher' },
-              modal: {
-                displayDetails: 'Afficher les détails',
-                resetButtonTitle: 'Effacer la recherche',
-                backButtonTitle: 'Fermer la recherche',
-                noResultsText: 'Aucun résultat pour',
-                footer: { selectText: 'choisir', navigateText: 'naviguer', closeText: 'fermer' },
-              },
-            },
-          },
-        },
-      },
+    editLink: { pattern: editLinkPattern, text: 'Edit this page on GitHub' },
+    footer: {
+      message: 'PlankMD is created and maintained by <a href="https://empilo.app">Empilo.app</a>.<br>Specification and code under the MIT License. Models under CC0.',
+      copyright: 'PlankMD contributors',
     },
+    socialLinks: [{ icon: 'github', link: GITHUB }],
+    search: { provider: 'local' },
   },
 })
