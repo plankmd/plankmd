@@ -14,8 +14,7 @@ Issues and pull requests are welcome, in particular:
   opens them in the gallery and the player.
 - **Spec changes.** Open an issue first. Explain the construction you could
   not describe, and show the lines you would like to write. `SPEC.md` is the
-  reference; the French translation on the website (`site/fr/spec.md`) is
-  updated in the same pull request.
+  reference.
 - **Code.** No runtime dependencies. `npm test` must pass, and after editing
   a sample, run `npm run build:samples` so the player bundles it.
 

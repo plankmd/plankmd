@@ -4,8 +4,8 @@
  * and by the tests in Node. No dependencies, no build step.
  *
  * The language is, in order: ?lang=fr|en in the address, the choice stored
- * under 'plankmd-lang' (the key the plankmd.org website uses too), the
- * browser's languages (French if it comes before English), else English.
+ * under 'plankmd-lang', the browser's languages (French if it comes before
+ * English), else English.
  *
  * The validator (src/plankmd.js) and the balance check (src/physics.js) report
  * in English, with stable codes. In French, the player explains each
@@ -187,7 +187,7 @@
       footer: 'Déposez un fichier <span class="code">.plank.md</span> sur la scène, ou modifiez la source. Faites glisser pour tourner, utilisez la molette pour zoomer.',
       gallery: 'Galerie',
       spec: 'Spécification',
-      site: 'https://plankmd.org/fr/',
+      site: 'https://plankmd.org',
       dropHere: 'Déposez un fichier .plank.md',
       legendGuide: 'guide, à retirer après usage',
       legendError: 'impossible à construire',

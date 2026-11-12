@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- Format v0.3 (`SPEC.md`, and the French spec on the website). Every v0.2
-  file stays valid and means the same.
+- Website: the French version is removed; the site is in English only, and
+  `/fr/...` addresses redirect to the English pages. The player and the
+  gallery keep their EN/FR switch.
+- Format v0.3 (`SPEC.md`). Every v0.2 file stays valid and means the same.
   - **Tilted planks**: `tilt=<axis>:<degrees>` turns a plank around a
     horizontal axis, `tilt-step` adds an angle at each repetition and
     `tilt-pivot` sets the axis: the fan of a true arch is one line. Checked

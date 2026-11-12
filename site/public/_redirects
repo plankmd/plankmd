@@ -1,3 +1,7 @@
 # Cloudflare static asset redirects.
 /github https://github.com/plankmd/plankmd 302
 /npm https://www.npmjs.com/package/plankmd 302
+# The French version of the website was removed: its pages go to the English ones.
+/fr /  301
+/fr/ / 301
+/fr/* /:splat 301
